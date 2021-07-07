@@ -1,6 +1,7 @@
 from duration import Duration
 from functools import reduce
 from htmlparsing import RCMHtmlParser
+import numpy as np
 
 
 def get_total_times(parser):
@@ -24,24 +25,32 @@ def get_positions(total_times, num_laps_driven):
 
 
 def get_best_laptimes(parser):
-    pass
+    return {(number, driver): min(laptimes[1:], key=lambda lt: lt.milliseconds) if len(laptimes) > 1 else None
+            for (number, driver), laptimes in parser.result.items()}
 
 
-def get_average_laptimes(parser):
-    pass
+def get_average_laptimes(total_times, num_laps_driven):
+    average_laptimes = {}
+    for (number, driver), total_time in total_times.items():
+        laps_driven = num_laps_driven[(number, driver)]
+        if laps_driven == 0:
+            average_laptimes[(number, driver)] = None
+        else:
+            average_laptimes[(number, driver)] = Duration(total_time.milliseconds // laps_driven)
 
-
-def get_std_deviations(parser):
-    pass
+    return average_laptimes
 
 
 def main():
     parser = RCMHtmlParser()
 
-    with open("../20210703_840511/17_11_39.html", encoding='utf-16-le') as f:
+    with open("../20210703_840511/11_54_32.html", encoding='utf-16-le') as f:
         contents = f.read()
 
     parser.parse_data(contents)
+    
+    import pprint
+    pprint.pprint(parser.result)
 
     print()
     total_times = get_total_times(parser)
@@ -55,6 +64,15 @@ def main():
     positions = get_positions(total_times, num_laps_driven)
     print(positions)
     print()
+
+    best_laptimes = get_best_laptimes(parser)
+    print(best_laptimes)
+    print()
+
+    average_laptimes = get_average_laptimes(total_times, num_laps_driven)
+    print(average_laptimes)
+    print()
+
 
 
 if __name__ == "__main__":
