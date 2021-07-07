@@ -33,3 +33,7 @@ class Duration:
     def __repr__(self):
         minutes, seconds, milliseconds = self.minutes_seconds_milliseconds()
         return f"Duration(minutes={minutes}, seconds={seconds}, milliseconds={milliseconds})"
+    
+    def __str__(self):
+        minutes, seconds, milliseconds = self.minutes_seconds_milliseconds()
+        return f"{minutes}:{seconds:02d}:{milliseconds:03d}"
