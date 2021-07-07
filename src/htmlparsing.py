@@ -29,9 +29,19 @@ class RCMHtmlParser(HTMLParser):
         self._parsing_data = False
         self._parsing_result_header = False
         self._driver_index = 0
+        self._result_header_index_start = 0
+
+    def parse_data(self, contents):
+        self.feed(contents)
+        for number_name in self.result_header:
+            if number_name not in self.result:
+                self.result[number_name] = []
 
     def _is_start_of_table(self, tag, attrs):
         return tag == "tr" and attrs == [("valign", "top")]
+
+    def _there_are_tables_after_this(self, tag, attrs):
+        return (not self._parsing_table) and len(self.result_header) > 0 and tag == "td" and ("class", "tableborder") in attrs
 
     def _is_useful_table_row(self, tag, attrs):
         return self._parsing_table and tag == "tr" and attrs == []
@@ -66,7 +76,8 @@ class RCMHtmlParser(HTMLParser):
 
     def _handle_laptime_row(self, data):
         if self._is_start_of_laptime_row(data):
-            self._driver_index = 0
+            # to handle multiple tables, we don't reset it to 0 but to where we started
+            self._driver_index = self._result_header_index_start
             print(f"Start of row! Lap {data}")
         else:
             number, name = self.result_header[self._driver_index]
@@ -98,9 +109,15 @@ class RCMHtmlParser(HTMLParser):
             print("\nStarting table!\n")
             self._parsing_table = True
 
+        elif self._there_are_tables_after_this(tag, attrs):
+            print("\nFound additional table!")
+            self._result_header_index_start = len(self.result_header)
+
     def handle_endtag(self, tag):
         if tag == "table":
-            if self._parsing_table and self._parsing_header:
+            if self._parsing_table and (self._parsing_header or len(self.result_header) > 0):
+                # We should turn on parsing result header mode either if we just got finished
+                # parsing the header, or if we have already processed rows prior to this.
                 self._parsing_header = False
                 self._parsing_result_header = True
             self._parsing_table = False
@@ -112,13 +129,15 @@ class RCMHtmlParser(HTMLParser):
     def handle_data(self, data):
         if self._parsing_data:
             if data.strip() != "":
-                #print(f"Useful data: {data}, {self._parsing_header}")
                 if not self._parsing_header:
                     self._handle_laptime_row(data)
                 
         elif self._parsing_result_header and self._parsing_table:
             if data.strip() != "" and "# nr" not in data.lower():
-                number, name = data.strip().split(" ")
+                data_split = data.strip().split(" ")
+
+                number = data_split[0]
+                name = " ".join(data_split[1:])
                 self.result_header.append((int(number), name))
                 print(f"Result header: {data}!")
 
@@ -126,7 +145,7 @@ class RCMHtmlParser(HTMLParser):
 def test():
     parser = RCMHtmlParser()
 
-    with open("../20210703_840511/18_22_49.html", encoding='utf-16-le') as f:
+    with open("../20210703_840511/18_47_55.html", encoding='utf-16-le') as f:
         contents = f.read()
 
     parser.feed(contents)
