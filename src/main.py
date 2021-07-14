@@ -1,7 +1,10 @@
 from duration import Duration
 from functools import reduce
 from htmlparsing import RCMHtmlParser
+
+import filelocation
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def get_total_times(parser):
@@ -44,14 +47,10 @@ def get_average_laptimes(total_times, num_laps_driven):
 def main():
     parser = RCMHtmlParser()
 
-    with open("../20210703_840511/11_54_32.html", encoding='utf-16-le') as f:
-        contents = f.read()
+    html_file_contents = filelocation.find_and_read_latest_html_file()
 
-    parser.parse_data(contents)
+    parser.parse_data(html_file_contents)
     
-    import pprint
-    pprint.pprint(parser.result)
-
     print()
     total_times = get_total_times(parser)
     print(total_times)

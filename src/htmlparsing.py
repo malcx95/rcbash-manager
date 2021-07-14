@@ -78,7 +78,6 @@ class RCMHtmlParser(HTMLParser):
         if self._is_start_of_laptime_row(data):
             # to handle multiple tables, we don't reset it to 0 but to where we started
             self._driver_index = self._result_header_index_start
-            print(f"Start of row! Lap {data}")
         else:
             number, name = self.result_header[self._driver_index]
             if self._is_laptime_empty_due_to_time_being_bold(data):
@@ -106,11 +105,9 @@ class RCMHtmlParser(HTMLParser):
             self._handle_table_parsing(tag, attrs)
 
         elif self._is_start_of_table(tag, attrs):
-            print("\nStarting table!\n")
             self._parsing_table = True
 
         elif self._there_are_tables_after_this(tag, attrs):
-            print("\nFound additional table!")
             self._result_header_index_start = len(self.result_header)
 
     def handle_endtag(self, tag):
@@ -139,7 +136,6 @@ class RCMHtmlParser(HTMLParser):
                 number = data_split[0]
                 name = " ".join(data_split[1:])
                 self.result_header.append((int(number), name))
-                print(f"Result header: {data}!")
 
 
 def test():
