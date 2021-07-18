@@ -136,6 +136,7 @@ def get_text_message(total_times, num_laps_driven, positions,
 def create_ordered_list_text(result, create_line):
     return "\n".join(create_line(i, item) for i, item in enumerate(result))
 
+
 def main():
     argparser = argparse.ArgumentParser(description="Time to race!")
     argparser.add_argument("-c", "--rcclass", type=int, required=True, help="2 for 2WD, 4 for 4WD")
