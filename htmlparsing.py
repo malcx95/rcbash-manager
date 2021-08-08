@@ -1,4 +1,5 @@
 from html.parser import HTMLParser
+from functools import reduce
 from collections import defaultdict
 from duration import Duration
 
@@ -138,20 +139,42 @@ class RCMHtmlParser(HTMLParser):
                 self.result_header.append((int(number), name))
 
 
-def test():
-    parser = RCMHtmlParser()
+def get_total_times(parser):
+    return {int(number): reduce(lambda a, b: a + b, laptimes, Duration(0))
+            for (number, _), laptimes in parser.result.items()}
 
-    with open("../20210703_840511/18_47_55.html", encoding='utf-16-le') as f:
-        contents = f.read()
 
-    parser.feed(contents)
-    print(parser.result_header)
-    import pprint
-    pprint.pprint(parser.result)
+def get_race_participants(parser):
+    return [int(number) for number, _ in parser.result]
 
-    for (number, driver), laps in parser.result.items():
-        total = Duration(0)
-        for duration in laps:
-            total += duration
 
-        print(f"Driver {driver} total: {total}")
+def get_num_laps_driven(parser):
+    return {int(number): max(0, len(laptimes) - 1)
+            for (number, _), laptimes in parser.result.items()}
+
+
+def get_positions(total_times, num_laps_driven):
+    orderings = []
+    for number, num_laps_driven in num_laps_driven.items():
+        orderings.append((int(number), num_laps_driven, total_times[number]))
+
+    orderings_sorted = sorted(orderings, key=lambda k: (k[1], -k[2].milliseconds), reverse=True)
+
+    return [number for number, _, _ in orderings_sorted]
+
+
+def get_best_laptimes(parser):
+    best_times = [(int(number), min(laptimes[1:], key=lambda lt: lt.milliseconds))
+                  if len(laptimes) > 1 else None for (number, _),
+                  laptimes in parser.result.items()]
+    return sorted(best_times, key=lambda k: k[1])
+
+
+def get_average_laptimes(total_times, num_laps_driven):
+    average_laptimes = []
+    for number, total_time in total_times.items():
+        laps_driven = num_laps_driven[number]
+        if laps_driven > 0:
+            average_laptimes.append((number, Duration(total_time.milliseconds // laps_driven)))
+
+    return average_laptimes

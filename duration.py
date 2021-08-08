@@ -8,7 +8,7 @@ class Duration:
         seconds = (self.milliseconds - (minutes * 60 * 1000)) // 1000
         milliseconds = self.milliseconds - seconds * 1000 - minutes * 60 * 1000
         return int(minutes), int(seconds), int(milliseconds)
-
+    
     def __add__(self, other):
         return Duration(self.milliseconds + other.milliseconds)
 
