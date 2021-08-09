@@ -214,17 +214,20 @@ def _calculate_points_from_non_finals(results, points):
             positions = results[rcclass][group]["positions"]
             for number in positions:
                 if _should_get_points:
-                    points[rcclass][number] += current_points 
+                    points[rcclass][number].append(current_points)
                 current_points -= 1
 
 
 def _calculate_cup_points(database):
-    points = {"2WD": defaultdict(int), "4WD": defaultdict(int)}
+    points_per_race = {"2WD": defaultdict(list), "4WD": defaultdict(list)}
     for race in RACE_ORDER:
         if race not in ("qualifiers", "Final") and race in database[RESULTS_KEY]:
-            _calculate_points_from_non_finals(database[RESULTS_KEY][race], points)
+            _calculate_points_from_non_finals(database[RESULTS_KEY][race], points_per_race)
         # TODO add finals
-    return points
+
+    return {num: sum(point_list)
+            for rcclass in points_per_race
+            for num, point_list in points_per_race[rcclass].items()}, points_per_race
 
 
 def create_qualifiers():
@@ -372,13 +375,25 @@ def _create_start_list_intermediate_races(groups, database, race):
     return start_lists
 
 
+def _sort_by_points_and_best_heats(points):
+
+    def key_fn(item):
+        number, points = item
+        point_histogram = [0]*20
+        for point in points:
+            point_histogram[point-1] += 1
+        return tuple([sum(points)] + point_histogram)
+
+    return sorted(points.items(), key=key_fn)
+
+
 def _create_start_lists_for_finals(database):
     start_lists = {"2WD": defaultdict(list), "4WD": defaultdict(list)}
-    points = _calculate_cup_points(database)
+    points, points_per_race = _calculate_cup_points(database)
     semi_results = database[RESULTS_KEY]["Semifinal"]
 
     for rcclass in start_lists:
-        highest_points = sorted(points[rcclass].items(), key=lambda k: k[1])
+        highest_points = _sort_by_points_and_best_heats(points_per_race[rcclass])
         group_index = 0
         groups = ["A", "B", "C"]
         while highest_points:
@@ -387,10 +402,8 @@ def _create_start_lists_for_finals(database):
                 (len(highest_points) > 1)):
                 group_index += 1
             else:
-                # TODO handle ties
                 start_lists[rcclass][curr_group].append(highest_points.pop()[0])
     return start_lists
-
 
 
 def _create_new_start_lists(groups, database):
