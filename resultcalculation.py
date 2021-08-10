@@ -6,14 +6,15 @@ from duration import Duration
 
 import filelocation
 import htmlparsing
+import textmessages
 
 import math
 import json
 import datetime
 import argparse
+import clipboard
 import copy
 
-# FIXME this might need to be referenced more
 MAX_NUM_PARTICIPANTS_PER_GROUP = 6
 
 RESULT_FOLDER_PATH = Path.home() / "RCBashResults"
@@ -38,6 +39,32 @@ RACE_ORDER = [
     SEMI_FINAL_NAME,
     FINALS_NAME,
 ]
+
+CLASS_ORDER_DEFAULT = [
+    ("2WD", "C"),
+    ("2WD", "B"),
+    ("2WD", "A"),
+    ("4WD", "C"),
+    ("4WD", "B"),
+    ("4WD", "A")
+]
+
+CLASS_ORDER_FINALS = [
+    ("2WD", "C"),
+    ("4WD", "C"),
+    ("2WD", "B"),
+    ("4WD", "B"),
+    ("2WD", "A"),
+    ("4WD", "A")
+]
+
+CLASS_ORDER = {
+    QUALIFIERS_NAME: CLASS_ORDER_DEFAULT,
+    EIGHTH_FINAL_NAME: CLASS_ORDER_DEFAULT,
+    QUARTER_FINAL_NAME: CLASS_ORDER_DEFAULT,
+    SEMI_FINAL_NAME: CLASS_ORDER_DEFAULT,
+    FINALS_NAME: CLASS_ORDER_FINALS,
+}
 
 
 def _get_todays_filename():
@@ -197,6 +224,9 @@ def add_participants():
 
 def _get_current_heat(database):
     return RACE_ORDER[database[CURRENT_HEAT_KEY]]
+
+def _get_previous_heat(database):
+    return RACE_ORDER[database[CURRENT_HEAT_KEY] - 1]
 
 
 def _find_relevant_race(race_participants, database):
@@ -492,6 +522,7 @@ def add_new_result():
     print(f"The latest result matches {rcclass} {group} {race}.")
     if not _confirm_yes_no():
         print("Please manually enter the result using the --manual flag")
+        return
 
     if race not in database[RESULTS_KEY]:
         database[RESULTS_KEY][race] = {"2WD": {}, "4WD": {}}
@@ -516,6 +547,14 @@ def add_new_result():
 
     _save_database(database)
 
+    results_text = textmessages.get_result_text_message(
+        database[RESULTS_KEY][race][rcclass][group], rcclass, group, race)
+
+    clipboard.copy(results_text)
+    print(results_text)
+
+    print("^^ Copied to clipboard")
+
 
 def add_new_result_manually():
     database = _get_database()
@@ -525,6 +564,14 @@ def add_new_result_manually():
                     for rcclass in ("2WD", "4WD") for group in database[START_LISTS_KEY][race][rcclass]]
     rcclass, group = _select_from_list(
         race_options, "Select which race to enter manually.", lambda e: " ".join(e))
+
+    if race not in database[RESULTS_KEY]:
+        database[RESULTS_KEY][race] = {"2WD": {}, "4WD": {}}
+
+    if group in database[RESULTS_KEY][race][rcclass]:
+        print("This race already has a previous result, which will be overwritten.")
+        if not _confirm_yes_no():
+            return
     
     print("Enter the drivers in the order they finished.")
     positions = []
@@ -550,10 +597,62 @@ def add_new_result_manually():
 
     _save_database(database)
 
+    results_text = textmessages.get_result_text_message(
+        database[RESULTS_KEY][race][rcclass][group], rcclass, group, race)
+
+    clipboard.copy(results_text)
+    print(results_text)
+
+    print("^^ Copied to clipboard")
+
+
+def _get_latest_race_class_group(database):
+    race = _get_current_heat(database)
+    class_order = CLASS_ORDER[race]
+    results = database[RESULTS_KEY]
+    heat_results = results.get(race)
+    if heat_results is None:
+        previous_heat = _get_previous_heat(database)
+        heat_results = database.get(previous_heat)
+        if heat_results is None:
+            return None, None, None
+
+    for rcclass, group in reversed(class_order):
+        class_results = heat_results[rcclass]
+        if group in class_results:
+            return race, rcclass, group
+
+    return None, None, None
+
+
+def show_latest_result(select=False):
+    database = _get_database()
+    if not select:
+        race, rcclass, group = _get_latest_race_class_group(database)
+    else:
+        race_options = [(race, rcclass, group)
+                        for race in database[RESULTS_KEY]
+                        for rcclass in ("2WD", "4WD")
+                        for group in database[RESULTS_KEY][race][rcclass]]
+        race, rcclass, group = _select_from_list(
+            race_options, "Select which race to display results for.", lambda e: " ".join(e))
+
+    if race is None:
+        print("There are no results yet!")
+        return
+
+    results_text = textmessages.get_result_text_message(
+        database[RESULTS_KEY][race][rcclass][group], rcclass, group, race)
+
+    clipboard.copy(results_text)
+    print(results_text)
+
+    print("^^ Copied to clipboard")
+    
 
 def main():
     parser = argparse.ArgumentParser(description="Manages an RCBash race day.")
-    
+
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("-s", "--new-race-day", action="store_true",
                        help="Start a new race day")
@@ -561,9 +660,14 @@ def main():
                        help="Add new result")
     group.add_argument("-n", "--next-round", action="store_true",
                        help="Add new result")
+    group.add_argument("-d", "--show-result", action="store_true",
+                       help="Display the a result as text. Use '-p'/'--select-result' flag "
+                            "to select which result, if empty the latest will be shown.")
 
     parser.add_argument("-m", "--manual", action="store_true",
                         help="Add a result manually")
+    parser.add_argument("-p", "--select-result", action="store_true",
+                        help="Select a result manually")
 
     args = parser.parse_args()
 
@@ -575,6 +679,8 @@ def main():
         add_new_result_manually()
     elif args.next_round:
         start_new_race_round()
+    elif args.show_result:
+        show_latest_result(select=args.select_result)
 
 
 if __name__ == "__main__":
