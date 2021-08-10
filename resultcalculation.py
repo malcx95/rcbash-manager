@@ -25,12 +25,18 @@ CURRENT_HEAT_KEY = "current_heat"
 
 MANUALLY_ENTERED_LAPS_DRIVEN = -1
 
+QUALIFIERS_NAME = "qualifiers"
+EIGHTH_FINAL_NAME = "1/8 final"
+QUARTER_FINAL_NAME = "1/4 final"
+SEMI_FINAL_NAME = "Semifinal"
+FINALS_NAME = "Final"
+
 RACE_ORDER = [
-    "qualifiers",
-    "1/8 final",
-    "1/4 final",
-    "Semifinal",
-    "Final",
+    QUALIFIERS_NAME,
+    EIGHTH_FINAL_NAME,
+    QUARTER_FINAL_NAME,
+    SEMI_FINAL_NAME,
+    FINALS_NAME,
 ]
 
 
@@ -221,7 +227,7 @@ def _calculate_points_from_non_finals(results, points):
 def _calculate_cup_points(database):
     points_per_race = {"2WD": defaultdict(list), "4WD": defaultdict(list)}
     for race in RACE_ORDER:
-        if race not in ("qualifiers", "Final") and race in database[RESULTS_KEY]:
+        if race not in (QUALIFIERS_NAME, FINALS_NAME) and race in database[RESULTS_KEY]:
             _calculate_points_from_non_finals(database[RESULTS_KEY][race], points_per_race)
         # TODO add finals
 
@@ -241,7 +247,7 @@ def create_qualifiers():
     all_participants = _get_all_participants(participants)
 
     database[ALL_PARTICIPANTS_KEY] = all_participants
-    database[START_LISTS_KEY]["qualifiers"] = participants
+    database[START_LISTS_KEY][QUALIFIERS_NAME] = participants
 
     _save_database(database)
 
@@ -307,7 +313,7 @@ def _create_almost_equal_partitions(numbers, num_partitions):
 
 def _create_start_list_from_qualifiers(groups, database):
     start_lists = {"2WD": {}, "4WD": {}}
-    qualifier_results = database[RESULTS_KEY]["qualifiers"]
+    qualifier_results = database[RESULTS_KEY][QUALIFIERS_NAME]
     
     def _group_sort_fn(item):
         group, results = item
@@ -390,7 +396,7 @@ def _sort_by_points_and_best_heats(points):
 def _create_start_lists_for_finals(database):
     start_lists = {"2WD": defaultdict(list), "4WD": defaultdict(list)}
     points, points_per_race = _calculate_cup_points(database)
-    semi_results = database[RESULTS_KEY]["Semifinal"]
+    semi_results = database[RESULTS_KEY][SEMI_FINAL_NAME]
 
     for rcclass in start_lists:
         highest_points = _sort_by_points_and_best_heats(points_per_race[rcclass])
@@ -408,9 +414,9 @@ def _create_start_lists_for_finals(database):
 
 def _create_new_start_lists(groups, database):
     race = _get_current_heat(database)
-    if race == "qualifiers":
+    if race == QUALIFIERS_NAME:
         return _create_start_list_from_qualifiers(groups, database)
-    elif race in ("1/8 final", "1/4 final"):
+    elif race in (EIGHTH_FINAL_NAME, QUARTER_FINAL_NAME):
         return _create_start_list_intermediate_races(groups, database, race)
     else:
         return _create_start_lists_for_finals(database)
@@ -424,7 +430,7 @@ def start_new_race_round():
 
     groups = _get_current_groups(database)
 
-    if _get_current_heat(database) == "qualifiers":
+    if _get_current_heat(database) == QUALIFIERS_NAME:
         print(f"Current groups are 2WD {', '.join(groups['2WD'])} and 4WD {', '.join(groups['4WD'])}")
         while not _confirm_yes_no("Do you want to use these groups?"):
             groups = _enter_new_groups()
@@ -447,6 +453,20 @@ def _add_dns_participants(race_entry, start_list):
     if not_started_participants:
         for number in not_started_participants:
             race_entry["positions"].append(number)
+
+
+def _update_start_lists_for_finals(database):
+    for rcclass in ("2WD", "4WD"):
+        class_results = database[RESULTS_KEY][FINALS_NAME][rcclass]
+        groups = ("C", "B", "A")
+        for i in range(len(groups) - 1):
+            group = groups[i]
+            if group in class_results:
+                group_winner = class_results[group]["positions"][0]
+                higher_group = groups[i + 1]
+                higher_group_start_list = database[START_LISTS_KEY][FINALS_NAME][rcclass][higher_group]
+                if group_winner not in higher_group_start_list:
+                    higher_group_start_list.append(group_winner)
 
 
 def add_new_result():
@@ -491,6 +511,9 @@ def add_new_result():
 
     _add_dns_participants(database[RESULTS_KEY][race][rcclass][group], start_list)
 
+    if race == FINALS_NAME:
+        _update_start_lists_for_finals(database)
+
     _save_database(database)
 
 
@@ -521,6 +544,9 @@ def add_new_result_manually():
 
     _add_dns_participants(
         database[RESULTS_KEY][race][rcclass][group], database[START_LISTS_KEY][race][rcclass][group])
+
+    if race == FINALS_NAME:
+        _update_start_lists_for_finals(database)
 
     _save_database(database)
 
