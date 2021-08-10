@@ -475,6 +475,7 @@ def start_new_race_round():
 
     print(new_start_lists)
     _save_database(database)
+    show_current_heat_start_list()
 
 
 def _add_dns_participants(race_entry, start_list):
@@ -648,7 +649,24 @@ def show_latest_result(select=False):
     print(results_text)
 
     print("^^ Copied to clipboard")
-    
+
+
+def show_current_heat_start_list():
+    database = _get_database()
+    race = _get_current_heat(database)
+    heat_start_lists = database[START_LISTS_KEY][race]
+
+    text_message = textmessages.create_heat_start_list_text_message(
+        heat_start_lists,
+        CLASS_ORDER[race],
+        race,
+        extra_text="Vinnare i lägre grupper deltar i nästa högre grupp (ex. B -> A)"
+                   if race == FINALS_NAME else "")
+    clipboard.copy(text_message)
+    print(text_message)
+
+    print("^^ Copied to clipboard")
+
 
 def main():
     parser = argparse.ArgumentParser(description="Manages an RCBash race day.")
@@ -663,6 +681,9 @@ def main():
     group.add_argument("-d", "--show-result", action="store_true",
                        help="Display the a result as text. Use '-p'/'--select-result' flag "
                             "to select which result, if empty the latest will be shown.")
+    group.add_argument("-l", "--show-heat-start-lists", action="store_true",
+                       help="Show the start lists for the current heat")
+
 
     parser.add_argument("-m", "--manual", action="store_true",
                         help="Add a result manually")
@@ -681,6 +702,8 @@ def main():
         start_new_race_round()
     elif args.show_result:
         show_latest_result(select=args.select_result)
+    elif args.show_heat_start_lists:
+        show_current_heat_start_list()
 
 
 if __name__ == "__main__":

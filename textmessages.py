@@ -24,6 +24,8 @@ GOLD_MEDAL = "🥇"
 SILVER_MEDAL = "🥈"
 BRONZE_MEDAL = "🥉"
 
+RACE_FLAG = "🏁"
+
 MEDALS = [GOLD_MEDAL, SILVER_MEDAL, BRONZE_MEDAL]
 
 RESULT_TEXT_TEMPLATE = \
@@ -40,6 +42,19 @@ Genomsnittliga varvtider:
 
 Totala tider:
 {actual_times}
+"""
+
+HEAT_START_LIST_TEXT_TEMPLATE = \
+"""Startordningar för {race}-heaten! {race_flag}
+
+{start_list_texts}
+{extra_text}
+"""
+
+SINGLE_HEAT_START_LIST_TEMPLATE = \
+"""{rcclass} {group}:
+{start_list_text}
+    {marshals} vänder bilar.
 """
 
 RESULT_TEXT_TEMPLATE_MANUAL = \
@@ -118,6 +133,47 @@ def get_result_text_message(results, rcclass, group, race):
             race=race,
             positions=positions_text
         )
+
+
+def _get_previous_group_wrap_around(heat_start_lists, race_order, index):
+    temp_index = index
+    while True:
+        if temp_index == 0:
+            temp_index = len(race_order) - 1
+        else:
+            temp_index -= 1
+        previous_rcclass, previous_group = race_order[temp_index]
+
+        if previous_group in heat_start_lists[previous_rcclass]:
+            return previous_rcclass, previous_group
+
+
+def create_heat_start_list_text_message(heat_start_lists, race_order, race, extra_text=""):
+    start_list_texts = []
+    for index, (rcclass, group) in enumerate(race_order):
+        if group not in heat_start_lists[rcclass]:
+            continue
+        start_list = heat_start_lists[rcclass][group]
+        entries = [f"    {i + 1}. {number} - {names.NAMES[number]}"
+                   for i, number in enumerate(start_list)]
+        previous_rcclass, previous_group = _get_previous_group_wrap_around(
+            heat_start_lists, race_order, index)
+        marshal_text = f"{previous_rcclass} {previous_group}"
+        start_list_texts.append(
+            SINGLE_HEAT_START_LIST_TEMPLATE.format(
+                rcclass=rcclass,
+                group=group,
+                start_list_text="\n".join(entries),
+                marshals=marshal_text
+            )
+        )
+    return HEAT_START_LIST_TEXT_TEMPLATE.format(
+        race=race,
+        race_flag=RACE_FLAG,
+        start_list_texts="\n".join(start_list_texts),
+        extra_text=extra_text
+    )
+
 
 
 def create_ordered_list_text(result, create_line):
