@@ -500,7 +500,7 @@ def _update_start_lists_for_finals(database):
                     higher_group_start_list.append(group_winner)
 
 
-def add_new_result():
+def add_new_result(drivers_to_exclude=None):
     database = _get_database()
     parser = htmlparsing.RCMHtmlParser()
     html_file_contents = filelocation.find_and_read_latest_html_file()
@@ -511,6 +511,14 @@ def add_new_result():
     positions = htmlparsing.get_positions(total_times, num_laps_driven)
     best_laptimes = htmlparsing.get_best_laptimes(parser)
     average_laptimes = htmlparsing.get_average_laptimes(total_times, num_laps_driven)
+
+    if drivers_to_exclude:
+        for num in drivers_to_exclude:
+            del total_times[num]
+            del num_laps_driven[num]
+            positions.remove(num)
+            best_laptimes = [(n, time) for n, time in best_laptimes if n != num]
+            average_laptimes = [(n, time) for n, time in average_laptimes if n != num]
 
     race_participants = htmlparsing.get_race_participants(parser)
     race, rcclass, group, start_list = _find_relevant_race(race_participants, database)
@@ -689,13 +697,15 @@ def main():
                         help="Add a result manually")
     parser.add_argument("-p", "--select-result", action="store_true",
                         help="Select a result manually")
+    parser.add_argument("-e", "--exclude", nargs="+", type=int,
+                        help="Exclude these drivers from the result and give them 0 points.")
 
     args = parser.parse_args()
 
     if args.new_race_day:
         create_qualifiers()
     elif args.result and not args.manual:
-        add_new_result()
+        add_new_result(args.exclude)
     elif args.result and args.manual:
         add_new_result_manually()
     elif args.next_round:
