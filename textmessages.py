@@ -63,6 +63,12 @@ RESULT_TEXT_TEMPLATE_MANUAL = \
 {positions}
 """
 
+POINTS_LIST_TEXT_TEMPLATE = \
+"""Nuvarande poängställning efter {race}-heaten!
+
+{points_list}
+"""
+
 
 def get_result_text_message(results, rcclass, group, race):
 
@@ -174,6 +180,30 @@ def create_heat_start_list_text_message(heat_start_lists, race_order, race, extr
         extra_text=extra_text
     )
 
+
+def create_points_list_text_message(all_points, points_per_race, race, verbose):
+    points_lists = []
+    for rcclass in points_per_race:
+        points = sorted(
+            [(num, all_points[num]) for num in points_per_race[rcclass]],
+            key=lambda k: k[1],
+            reverse=True
+        )
+        if verbose:
+            point_texts = []
+            for num, p in points:
+                point_summation_list = " + ".join(str(p) for p in points_per_race[rcclass][num])
+                point_texts.append(f"{num} - {names.NAMES[num]}: {point_summation_list} = {p}")
+        else:
+            point_texts = [f"{num} - {names.NAMES[num]}: {p}"
+                           for num, p in points]
+        list_text = "\n".join(point_texts)
+        points_lists.append(f"{rcclass}:\n{list_text}")
+
+    return POINTS_LIST_TEXT_TEMPLATE.format(
+        race=race,
+        points_list="\n\n".join(points_lists)
+    )
 
 
 def create_ordered_list_text(result, create_line):

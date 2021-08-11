@@ -238,8 +238,8 @@ def _find_relevant_race(race_participants, database):
     return None, None, None, None
 
 
-def _should_get_points(group_results):
-    return results["manual"] or results["num_laps_driven"].get(number, 0) > 0
+def _should_get_points(group_results, number):
+    return group_results["manual"] or group_results["num_laps_driven"].get(number, 0) > 0
 
 
 def _calculate_points_from_non_finals(results, points):
@@ -249,17 +249,34 @@ def _calculate_points_from_non_finals(results, points):
         for group in sorted(results[rcclass]):
             positions = results[rcclass][group]["positions"]
             for number in positions:
-                if _should_get_points:
+                if _should_get_points(results[rcclass][group], number):
                     points[rcclass][number].append(current_points)
                 current_points -= 1
+
+
+def _calculate_points_from_finals(results, points):
+    drivers_counted = set()
+    for rcclass in points:
+        # iterate such that we parse A group first
+        current_points = 40
+        for group in sorted(results[rcclass]):
+            positions = results[rcclass][group]["positions"]
+            for number in positions:
+                if number not in drivers_counted:
+                    drivers_counted.add(number)
+                    if _should_get_points(results[rcclass][group], number):
+                        points[rcclass][number].append(current_points)
+                    current_points -= 2
 
 
 def _calculate_cup_points(database):
     points_per_race = {"2WD": defaultdict(list), "4WD": defaultdict(list)}
     for race in RACE_ORDER:
-        if race not in (QUALIFIERS_NAME, FINALS_NAME) and race in database[RESULTS_KEY]:
-            _calculate_points_from_non_finals(database[RESULTS_KEY][race], points_per_race)
-        # TODO add finals
+        if _are_all_races_in_round_completed(database, race):
+            if race not in (QUALIFIERS_NAME, FINALS_NAME) and race in database[RESULTS_KEY]:
+                _calculate_points_from_non_finals(database[RESULTS_KEY][race], points_per_race)
+            elif race == FINALS_NAME:
+                _calculate_points_from_finals(database[RESULTS_KEY][FINALS_NAME], points_per_race)
 
     return {num: sum(point_list)
             for rcclass in points_per_race
@@ -282,8 +299,7 @@ def create_qualifiers():
     _save_database(database)
 
 
-def _are_all_races_in_current_round_completed(database):
-    race = _get_current_heat(database)
+def _are_all_races_in_round_completed(database, race):
     for rcclass in database[START_LISTS_KEY][race]:
         for group in database[START_LISTS_KEY][race][rcclass]:
             if race not in database[RESULTS_KEY]:
@@ -454,7 +470,8 @@ def _create_new_start_lists(groups, database):
 
 def start_new_race_round():
     database = _get_database()
-    if not _are_all_races_in_current_round_completed(database):
+    race = _get_current_heat(database)
+    if not _are_all_races_in_round_completed(database, race):
         print("Can't start new round yet! Not all races are completed!")
         return
 
@@ -676,6 +693,18 @@ def show_current_heat_start_list():
     print("^^ Copied to clipboard")
 
 
+def show_current_points(verbose):
+    database = _get_database()
+    race = _get_current_heat(database)
+    points, points_per_race = _calculate_cup_points(database)
+
+    text_message = textmessages.create_points_list_text_message(points, points_per_race, race, verbose)
+    clipboard.copy(text_message)
+    print(text_message)
+
+    print("^^ Copied to clipboard")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Manages an RCBash race day.")
 
@@ -691,12 +720,15 @@ def main():
                             "to select which result, if empty the latest will be shown.")
     group.add_argument("-l", "--show-heat-start-lists", action="store_true",
                        help="Show the start lists for the current heat")
-
+    group.add_argument("-o", "--show-points", action="store_true",
+                       help="Show the current points.")
 
     parser.add_argument("-m", "--manual", action="store_true",
                         help="Add a result manually")
     parser.add_argument("-p", "--select-result", action="store_true",
                         help="Select a result manually")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="Show points from all heats")
     parser.add_argument("-e", "--exclude", nargs="+", type=int,
                         help="Exclude these drivers from the result and give them 0 points.")
 
@@ -714,6 +746,8 @@ def main():
         show_latest_result(select=args.select_result)
     elif args.show_heat_start_lists:
         show_current_heat_start_list()
+    elif args.show_points:
+        show_current_points(args.verbose)
 
 
 if __name__ == "__main__":
