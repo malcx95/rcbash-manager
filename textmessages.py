@@ -41,15 +41,13 @@ Genomsnittliga varvtider:
 {average_laptimes}
 
 Totala tider:
-{actual_times}
-"""
+{actual_times}"""
 
 HEAT_START_LIST_TEXT_TEMPLATE = \
 """Startordningar för {race}-heaten! {race_flag}
 
 {start_list_texts}
-{extra_text}
-"""
+{extra_text}"""
 
 SINGLE_HEAT_START_LIST_TEMPLATE = \
 """{rcclass} {group}:
@@ -60,14 +58,24 @@ SINGLE_HEAT_START_LIST_TEMPLATE = \
 RESULT_TEXT_TEMPLATE_MANUAL = \
 """Resultat från {rcclass} {group} {race}
 
-{positions}
-"""
+{positions}"""
 
 POINTS_LIST_TEXT_TEMPLATE = \
 """Nuvarande poängställning efter {race}-heaten!
 
-{points_list}
-"""
+{points_list}"""
+
+
+START_MESSAGE_TEMPLATE = \
+"""Nu ska {rcclass} {group}-{race} köras:
+
+{start_list}
+
+{marshal_rcclass} {marshal_group} vänder bilar, dvs:
+
+{marshals}
+
+Gör er redo och lycka till! {race_flag}"""
 
 
 def get_result_text_message(results, rcclass, group, race):
@@ -76,7 +84,12 @@ def get_result_text_message(results, rcclass, group, race):
         driver = names.NAMES[number]
         time = total_times.get(number)
         medal = f"{MEDALS[index]} " if index < 3 else ""
-        return f"{index + 1}. {number} - {driver} {medal}"
+        dns = ""
+        if "dns" in results and number in results["dns"]:
+            dns = "- Startade ej"
+            medal = ""
+
+        return f"{index + 1}. {number} - {driver} {medal}{dns}"
 
     def create_best_laptimes_line(index, num_time):
         number, time = num_time
@@ -142,6 +155,7 @@ def get_result_text_message(results, rcclass, group, race):
 
 
 def _get_previous_group_wrap_around(heat_start_lists, race_order, index):
+    # FIXME this code does not belong in this file
     temp_index = index
     while True:
         if temp_index == 0:
@@ -157,6 +171,7 @@ def _get_previous_group_wrap_around(heat_start_lists, race_order, index):
 def create_heat_start_list_text_message(heat_start_lists, race_order, race, extra_text=""):
     start_list_texts = []
     for index, (rcclass, group) in enumerate(race_order):
+        # FIXME this code does not belong in this file
         if group not in heat_start_lists[rcclass]:
             continue
         start_list = heat_start_lists[rcclass][group]
@@ -203,6 +218,24 @@ def create_points_list_text_message(all_points, points_per_race, race, verbose):
     return POINTS_LIST_TEXT_TEMPLATE.format(
         race=race,
         points_list="\n\n".join(points_lists)
+    )
+
+
+def create_race_start_message(heat_start_lists, race_order, race, rcclass, group, class_order_index):
+    start_list = heat_start_lists[rcclass][group]
+    previous_rcclass, previous_group = _get_previous_group_wrap_around(
+        heat_start_lists, race_order, class_order_index)
+    marshal_list = heat_start_lists[previous_rcclass][previous_group]
+
+    return START_MESSAGE_TEMPLATE.format(
+        rcclass=rcclass,
+        group=group,
+        race=race,
+        start_list="\n".join(f"{i + 1}. {num} - {names.NAMES[num]}" for i, num in enumerate(start_list)),
+        marshal_rcclass=previous_rcclass,
+        marshal_group=previous_group,
+        marshals="\n".join(f"{num} - {names.NAMES[num]}" for num in marshal_list),
+        race_flag=RACE_FLAG
     )
 
 

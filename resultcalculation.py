@@ -26,9 +26,9 @@ CURRENT_HEAT_KEY = "current_heat"
 
 MANUALLY_ENTERED_LAPS_DRIVEN = -1
 
-QUALIFIERS_NAME = "qualifiers"
-EIGHTH_FINAL_NAME = "1/8 final"
-QUARTER_FINAL_NAME = "1/4 final"
+QUALIFIERS_NAME = "Kval"
+EIGHTH_FINAL_NAME = "Åttondelsfinal"
+QUARTER_FINAL_NAME = "Kvartsfinal"
 SEMI_FINAL_NAME = "Semifinal"
 FINALS_NAME = "Final"
 
@@ -231,15 +231,21 @@ def _get_previous_heat(database):
 
 def _find_relevant_race(race_participants, database):
     race = _get_current_heat(database)
+    largest_match_size = 0
+    largest_match_group = (None, None, None, None)
     for rcclass in database[START_LISTS_KEY][race]:
         for group, start_list in database[START_LISTS_KEY][race][rcclass].items():
-            if set(race_participants).issubset(set(start_list)):
-                return race, rcclass, group, start_list
-    return None, None, None, None
+            intersection_size = len(set(race_participants).intersection(set(start_list)))
+            if intersection_size > largest_match_size:
+                largest_match_size = intersection_size
+                largest_match_group = (race, rcclass, group, start_list)
+    return largest_match_group
 
 
 def _should_get_points(group_results, number):
-    return group_results["manual"] or group_results["num_laps_driven"].get(number, 0) > 0
+    if "dns" in group_results and number in group_results["dns"]:
+        return False
+    return (group_results["manual"] or group_results["num_laps_driven"].get(number, 0) > 0)
 
 
 def _calculate_points_from_non_finals(results, points):
@@ -300,6 +306,9 @@ def create_qualifiers():
 
 
 def _are_all_races_in_round_completed(database, race):
+    if race not in database[START_LISTS_KEY]:
+        return False
+
     for rcclass in database[START_LISTS_KEY][race]:
         for group in database[START_LISTS_KEY][race][rcclass]:
             if race not in database[RESULTS_KEY]:
@@ -367,6 +376,8 @@ def _create_start_list_from_qualifiers(groups, database):
         first = positions[0]
         return (results["num_laps_driven"][first], -results["total_times"][first].milliseconds)
 
+    added_drivers = set()
+    duplicate_drivers = set()
     for rcclass in start_lists:
         all_total_times = {}
         all_num_laps_driven = {}
@@ -383,14 +394,21 @@ def _create_start_list_from_qualifiers(groups, database):
         curr_heat = 0
         while any(group_positions):
             if len(group_positions[curr_heat]):
-                all_positions.append(group_positions[curr_heat].pop(0))
+                driver_num = group_positions[curr_heat].pop(0)
+
+                if driver_num in added_drivers:
+                    duplicate_drivers.add(driver_num)
+                else:
+                    all_positions.append(driver_num)
+                    added_drivers.add(driver_num)
+
             curr_heat = (curr_heat + 1) % len(group_positions)
 
         groups_for_class = groups[rcclass]
         partitioned_positions = _create_almost_equal_partitions(all_positions, len(groups_for_class))
         for start_list, group in zip(partitioned_positions, sorted(groups_for_class)):
             start_lists[rcclass][group] = start_list
-    return start_lists
+    return start_lists, duplicate_drivers
 
 
 def _create_start_list_intermediate_races(groups, database, race):
@@ -463,9 +481,11 @@ def _create_new_start_lists(groups, database):
     if race == QUALIFIERS_NAME:
         return _create_start_list_from_qualifiers(groups, database)
     elif race in (EIGHTH_FINAL_NAME, QUARTER_FINAL_NAME):
-        return _create_start_list_intermediate_races(groups, database, race)
+        # TODO add detection of duplicates
+        return _create_start_list_intermediate_races(groups, database, race), set()
     else:
-        return _create_start_lists_for_finals(database)
+        # TODO add detection of duplicates
+        return _create_start_lists_for_finals(database), set()
 
 
 def start_new_race_round():
@@ -483,16 +503,20 @@ def start_new_race_round():
             groups = _enter_new_groups()
             print(f"New groups are 2WD {', '.join(groups['2WD'])} and 4WD {', '.join(groups['4WD'])}")
 
-    new_start_lists = _create_new_start_lists(groups, database)
+    new_start_lists, duplicate_drivers = _create_new_start_lists(groups, database)
     current_heat = database[CURRENT_HEAT_KEY]
     current_heat += 1
     database[CURRENT_HEAT_KEY] = current_heat
     
     database[START_LISTS_KEY][RACE_ORDER[current_heat]] = new_start_lists
 
-    print(new_start_lists)
+    show_current_heat_start_list(database)
+
+    if duplicate_drivers:
+        print(f"Warning: Driver(s) {', '.join(str(n) for n in duplicate_drivers)} may have been in the wrong heat.")
+        if not _confirm_yes_no("Do you want to use these start lists anyway?"):
+            return
     _save_database(database)
-    show_current_heat_start_list()
 
 
 def _add_dns_participants(race_entry, start_list):
@@ -501,6 +525,11 @@ def _add_dns_participants(race_entry, start_list):
     if not_started_participants:
         for number in not_started_participants:
             race_entry["positions"].append(number)
+            if "dns" not in race_entry:
+                race_entry["dns"] = []
+
+            race_entry["dns"].append(number)
+
 
 
 def _update_start_lists_for_finals(database):
@@ -515,6 +544,18 @@ def _update_start_lists_for_finals(database):
                 higher_group_start_list = database[START_LISTS_KEY][FINALS_NAME][rcclass][higher_group]
                 if group_winner not in higher_group_start_list:
                     higher_group_start_list.append(group_winner)
+
+
+def _get_next_race(database):
+    race = _get_current_heat(database)
+    heat_start_lists = database[START_LISTS_KEY][race]
+    current_results = database[RESULTS_KEY].get(race)
+    for class_order_index, (rcclass, group) in enumerate(CLASS_ORDER[race]):
+        if group not in heat_start_lists[rcclass]:
+            continue
+        if current_results is None or group not in current_results[rcclass]:
+            return race, rcclass, group, class_order_index
+    return None, None, None, None
 
 
 def add_new_result(drivers_to_exclude=None):
@@ -676,8 +717,9 @@ def show_latest_result(select=False):
     print("^^ Copied to clipboard")
 
 
-def show_current_heat_start_list():
-    database = _get_database()
+def show_current_heat_start_list(database=None):
+    if database is None:
+        database = _get_database()
     race = _get_current_heat(database)
     heat_start_lists = database[START_LISTS_KEY][race]
 
@@ -705,6 +747,25 @@ def show_current_points(verbose):
     print("^^ Copied to clipboard")
 
 
+def show_start_message():
+    database = _get_database()
+    race, rcclass, group, class_order_index = _get_next_race(database)
+
+    if race is None:
+        print("There are no more races in this heat!")
+        return
+
+    heat_start_lists = database[START_LISTS_KEY][race]
+
+    text_message = textmessages.create_race_start_message(
+        heat_start_lists, CLASS_ORDER[race], race, rcclass, group, class_order_index)
+
+    clipboard.copy(text_message)
+    print(text_message)
+
+    print("^^ Copied to clipboard")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Manages an RCBash race day.")
 
@@ -714,7 +775,7 @@ def main():
     group.add_argument("-r", "--result", action="store_true",
                        help="Add new result")
     group.add_argument("-n", "--next-round", action="store_true",
-                       help="Add new result")
+                       help="Start the next round")
     group.add_argument("-d", "--show-result", action="store_true",
                        help="Display the a result as text. Use '-p'/'--select-result' flag "
                             "to select which result, if empty the latest will be shown.")
@@ -722,6 +783,8 @@ def main():
                        help="Show the start lists for the current heat")
     group.add_argument("-o", "--show-points", action="store_true",
                        help="Show the current points.")
+    group.add_argument("-g", "--start-message", action="store_true",
+                       help="Show the current race to be started.")
 
     parser.add_argument("-m", "--manual", action="store_true",
                         help="Add a result manually")
@@ -748,6 +811,8 @@ def main():
         show_current_heat_start_list()
     elif args.show_points:
         show_current_points(args.verbose)
+    elif args.start_message:
+        show_start_message()
 
 
 if __name__ == "__main__":
