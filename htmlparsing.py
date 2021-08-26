@@ -165,8 +165,7 @@ def get_positions(total_times, num_laps_driven):
 
 def get_best_laptimes(parser):
     best_times = [(int(number), min(laptimes[1:], key=lambda lt: lt.milliseconds))
-                  if len(laptimes) > 1 else None for (number, _),
-                  laptimes in parser.result.items()]
+                  for (number, _), laptimes in parser.result.items() if len(laptimes) > 1]
     return sorted(best_times, key=lambda k: k[1])
 
 
