@@ -163,6 +163,27 @@ def _enter_participant(participants, msg="Enter a participant (blank to end grou
             print(f"Number {number} doesn't match any driver.")
 
 
+def _enter_num_laps(number):
+    while True:
+        num_laps = input(f"Enter number of laps driven by {number}: ")
+        if not num_laps.isnumeric():
+            print(f"{num_laps} isn't a number.")
+        else:
+            return int(num_laps)
+
+
+def _enter_total_time(number):
+    while True:
+        entered = input(f"Enter total time driven by {number} (minutes:seconds:milliseconds): ")
+        try:
+            minutes_str, seconds_str, milliseconds_str = entered.split(":")
+            return Duration(minutes=int(minutes_str),
+                            seconds=int(seconds_str),
+                            milliseconds=int(milliseconds_str))
+        except ValueError:
+            print(f"{entered} isn't a valid time format (minutes:seconds:milliseconds)")
+
+
 def _confirm_yes_no(msg="Confirm?"):
     while True:
         ans = input(f"{msg} (y/n): ")
@@ -482,7 +503,7 @@ def _create_new_start_lists(groups, database):
         return _create_start_list_from_qualifiers(groups, database)
     elif race in (EIGHTH_FINAL_NAME, QUARTER_FINAL_NAME):
         # TODO add detection of duplicates
-        return _create_start_list_intermediate_races(groups, database, race), set()
+        return _create_start_list_intermediate_races(groups, database, race)
     else:
         # TODO add detection of duplicates
         return _create_start_lists_for_finals(database), set()
@@ -648,10 +669,20 @@ def add_new_result_manually():
             break
         positions.append(number)
 
+    num_laps_driven = {}
+    total_times = {}
+    if race == QUALIFIERS_NAME:
+        for number in positions:
+            num_laps = _enter_num_laps(number)
+            total_time = _enter_total_time(number)
+
+            num_laps_driven[number] = num_laps
+            total_times[number] = total_time
+
     database[RESULTS_KEY][race][rcclass][group] = {}
     database[RESULTS_KEY][race][rcclass][group]["positions"] = positions
-    database[RESULTS_KEY][race][rcclass][group]["num_laps_driven"] = {}
-    database[RESULTS_KEY][race][rcclass][group]["total_times"] = {}
+    database[RESULTS_KEY][race][rcclass][group]["num_laps_driven"] = num_laps_driven
+    database[RESULTS_KEY][race][rcclass][group]["total_times"] = total_times
     database[RESULTS_KEY][race][rcclass][group]["best_laptimes"] = []
     database[RESULTS_KEY][race][rcclass][group]["average_laptimes"] = []
     database[RESULTS_KEY][race][rcclass][group]["manual"] = True
