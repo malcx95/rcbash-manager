@@ -28,9 +28,11 @@ class RCMHtmlParser(HTMLParser):
         self._parsing_table = False
         self._parsing_table_row = False
         self._parsing_data = False
+        self._parsing_bold_time = False
         self._parsing_result_header = False
         self._driver_index = 0
         self._result_header_index_start = 0
+
 
     def parse_data(self, contents):
         self.feed(contents)
@@ -73,17 +75,29 @@ class RCMHtmlParser(HTMLParser):
         # is present, I think it's safer to check whether there is an actual laptime
         # in the data string, which is what this tests. The replace-function is used
         # since isnumeric() doesn't regard floats as numeric.
-        return not data.strip().split(' ')[-1].replace('.', '').replace(':', '').isnumeric()
+        return (data.strip() != "") and (not data.strip().split(' ')[-1].replace('.', '').replace(':', '').isnumeric())
 
     def _handle_laptime_row(self, data):
+        num_drivers = len(self.result_header)
+        if self._driver_index >= num_drivers and data.strip() == "":
+            # we have a bunch of empty cells we need to skip
+            return
+
         if self._is_start_of_laptime_row(data):
             # to handle multiple tables, we don't reset it to 0 but to where we started
             self._driver_index = self._result_header_index_start
         else:
             number, name = self.result_header[self._driver_index]
             if self._is_laptime_empty_due_to_time_being_bold(data):
-                # skip since we are parsing the best laptime, the time will exist in the next
-                # tag.
+                # skip since we are parsing the best laptime, the time will exist in the next tag.
+                self._parsing_bold_time = True
+                return
+            elif data.strip() == "":
+                if not self._parsing_bold_time:
+                    # we have an empty cell, move to the next
+                    self._driver_index += 1
+                else:
+                    self._parsing_bold_time = False
                 return
 
             time_string = data.strip().split(' ')[-1]
@@ -126,9 +140,8 @@ class RCMHtmlParser(HTMLParser):
 
     def handle_data(self, data):
         if self._parsing_data:
-            if data.strip() != "":
-                if not self._parsing_header:
-                    self._handle_laptime_row(data)
+            if not self._parsing_header:
+                self._handle_laptime_row(data)
                 
         elif self._parsing_result_header and self._parsing_table:
             if data.strip() != "" and "# nr" not in data.lower():

@@ -37,3 +37,6 @@ class Duration:
     def __str__(self):
         minutes, seconds, milliseconds = self.minutes_seconds_milliseconds()
         return f"{minutes}:{seconds:02d}:{milliseconds:03d}"
+
+    def __hash__(self):
+        return self.milliseconds
