@@ -463,7 +463,20 @@ def _create_start_list_intermediate_races(groups, database, race):
             new_start_lists[lower_group] = lower_positions
 
         start_lists[rcclass] = new_start_lists
-    return start_lists
+    return start_lists, _remove_and_return_duplicate_drivers(start_lists)
+
+
+def _remove_and_return_duplicate_drivers(start_lists):
+    all_duplicate_drivers = set()
+    for rcclass, group_start_lists in start_lists.items():
+        added_drivers = set()
+        for group, start_list in group_start_lists.items():
+            for driver in start_list:
+                if driver in added_drivers:
+                    all_duplicate_drivers.add(driver)
+                else:
+                    added_drivers.add(driver)
+    return all_duplicate_drivers
 
 
 def _sort_by_points_and_best_heats(points):
@@ -494,7 +507,7 @@ def _create_start_lists_for_finals(database):
                 group_index += 1
             else:
                 start_lists[rcclass][curr_group].append(highest_points.pop()[0])
-    return start_lists
+    return start_lists, _remove_and_return_duplicate_drivers(start_lists)
 
 
 def _create_new_start_lists(groups, database):
@@ -502,11 +515,9 @@ def _create_new_start_lists(groups, database):
     if race == QUALIFIERS_NAME:
         return _create_start_list_from_qualifiers(groups, database)
     elif race in (EIGHTH_FINAL_NAME, QUARTER_FINAL_NAME):
-        # TODO add detection of duplicates
         return _create_start_list_intermediate_races(groups, database, race)
     else:
-        # TODO add detection of duplicates
-        return _create_start_lists_for_finals(database), set()
+        return _create_start_lists_for_finals(database)
 
 
 def start_new_race_round():
@@ -591,6 +602,18 @@ def add_new_result(drivers_to_exclude=None):
     best_laptimes = htmlparsing.get_best_laptimes(parser)
     average_laptimes = htmlparsing.get_average_laptimes(total_times, num_laps_driven)
 
+    race_participants = htmlparsing.get_race_participants(parser)
+    race, rcclass, group, start_list = _find_relevant_race(race_participants, database)
+
+    extra_participants = set(race_participants) - set(start_list)
+    if extra_participants:
+        if _confirm_yes_no(f"Driver(s) {extra_participants} weren't "
+                           f"supposed to be in this race. Do you want to exclude them?"):
+            for driver in extra_participants:
+                if drivers_to_exclude is None:
+                    drivers_to_exclude = []
+                drivers_to_exclude.append(driver)
+
     if drivers_to_exclude:
         for num in drivers_to_exclude:
             del total_times[num]
@@ -599,8 +622,6 @@ def add_new_result(drivers_to_exclude=None):
             best_laptimes = [(n, time) for n, time in best_laptimes if n != num]
             average_laptimes = [(n, time) for n, time in average_laptimes if n != num]
 
-    race_participants = htmlparsing.get_race_participants(parser)
-    race, rcclass, group, start_list = _find_relevant_race(race_participants, database)
 
     if race is None:
         print("Couldn't match the latest result with any race!")
@@ -619,6 +640,10 @@ def add_new_result(drivers_to_exclude=None):
         print("This race already has a previous result, which will be overwritten.")
         if not _confirm_yes_no():
             return
+        elif race == FINALS_NAME:
+            print("Please manually remove the old winner from the next start list before doing so!")
+            if not _confirm_yes_no("Have you done that?"):
+                return
 
     database[RESULTS_KEY][race][rcclass][group] = {}
     database[RESULTS_KEY][race][rcclass][group]["positions"] = positions
@@ -645,6 +670,7 @@ def add_new_result(drivers_to_exclude=None):
 
 
 def add_new_result_manually():
+    # FIXME this need to be reworked, too much is duplicated
     database = _get_database()
     race = _get_current_heat(database)
 
@@ -660,6 +686,10 @@ def add_new_result_manually():
         print("This race already has a previous result, which will be overwritten.")
         if not _confirm_yes_no():
             return
+        elif race == FINALS_NAME:
+            print("Please manually remove the old winner from the next start list before doing so!")
+            if not _confirm_yes_no("Have you done that?"):
+                return
     
     print("Enter the drivers in the order they finished.")
     positions = []
@@ -678,6 +708,25 @@ def add_new_result_manually():
 
             num_laps_driven[number] = num_laps
             total_times[number] = total_time
+
+    race_participants = positions
+    race, rcclass, group, start_list = _find_relevant_race(race_participants, database)
+
+    drivers_to_exclude = []
+    extra_participants = set(race_participants) - set(start_list)
+    if extra_participants:
+        if _confirm_yes_no(f"Driver(s) {extra_participants} weren't "
+                           f"supposed to be in this race. Do you want to exclude them?"):
+            for driver in extra_participants:
+                drivers_to_exclude.append(driver)
+
+    for num in drivers_to_exclude:
+        if total_times:
+            del total_times[num]
+            del num_laps_driven[num]
+            best_laptimes = [(n, time) for n, time in best_laptimes if n != num]
+            average_laptimes = [(n, time) for n, time in average_laptimes if n != num]
+        positions.remove(num)
 
     database[RESULTS_KEY][race][rcclass][group] = {}
     database[RESULTS_KEY][race][rcclass][group]["positions"] = positions
