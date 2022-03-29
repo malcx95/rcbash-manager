@@ -67,6 +67,9 @@ CLASS_ORDER = {
 }
 
 
+def _input(text):
+    return input(text)
+
 def _get_todays_filename():
     todays_date = datetime.datetime.now()
     todays_date_string = todays_date.strftime("%y%m%d")
@@ -122,13 +125,13 @@ def start_new_race_day():
         print("There is already an ongoing race day for today!")
         answered = False
         while not answered:
-            ans = input("Do you really want to overwrite it? (yes/n): ")
+            ans = _input("Do you really want to overwrite it? (yes/n): ")
             if ans == "yes":
                 answered = True
             elif ans == "n":
                 return False
-    
-    with open(path, "w") as f:
+
+    with path.open("w") as f:
         json.dump(database, f)
 
     print(f"New race day created in {str(path)}!")
@@ -150,7 +153,7 @@ def _number_already_entered(num, participants):
 
 def _enter_participant(participants, msg="Enter a participant (blank to end group): "):
     while True:
-        number = input(msg)
+        number = _input(msg)
         if number == "":
             return None
         elif not number.isnumeric():
@@ -165,7 +168,7 @@ def _enter_participant(participants, msg="Enter a participant (blank to end grou
 
 def _enter_num_laps(number):
     while True:
-        num_laps = input(f"Enter number of laps driven by {number}: ")
+        num_laps = _input(f"Enter number of laps driven by {number}: ")
         if not num_laps.isnumeric():
             print(f"{num_laps} isn't a number.")
         else:
@@ -174,7 +177,7 @@ def _enter_num_laps(number):
 
 def _enter_total_time(number):
     while True:
-        entered = input(f"Enter total time driven by {number} (minutes:seconds:milliseconds): ")
+        entered = _input(f"Enter total time driven by {number} (minutes:seconds:milliseconds): ")
         try:
             minutes_str, seconds_str, milliseconds_str = entered.split(":")
             return Duration(minutes=int(minutes_str),
@@ -186,7 +189,7 @@ def _enter_total_time(number):
 
 def _confirm_yes_no(msg="Confirm?"):
     while True:
-        ans = input(f"{msg} (y/n): ")
+        ans = _input(f"{msg} (y/n): ")
         if ans in ("y", "n"):
             return ans == "y"
 
@@ -358,7 +361,7 @@ def _enter_new_groups():
     for rcclass in groups:
         entered = ""
         while entered not in ("A", "B", "C"):
-            entered = input(f"Enter the lowest group for {rcclass}: ")
+            entered = _input(f"Enter the lowest group for {rcclass}: ")
         groups[rcclass] = groups_to_add[entered]
     return groups
 
@@ -369,8 +372,8 @@ def _select_from_list(options, message, element_format_fn=str):
         print(f"{i + 1}. {element_format_fn(option)}")
     ans = ""
     while not (ans.isdigit() and 1 <= int(ans) <= len(options)):
-        ans = input(f"Select option 1-{len(options)}: ")
-    
+        ans = _input(f"Select option 1-{len(options)}: ")
+
     return options[int(ans) - 1]
 
 
