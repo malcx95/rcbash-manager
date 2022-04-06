@@ -70,6 +70,7 @@ CLASS_ORDER = {
 def _input(text):
     return input(text)
 
+
 def _get_todays_filename():
     todays_date = datetime.datetime.now()
     todays_date_string = todays_date.strftime("%y%m%d")
@@ -393,7 +394,7 @@ def _create_almost_equal_partitions(numbers, num_partitions):
 def _create_start_list_from_qualifiers(groups, database):
     start_lists = {"2WD": {}, "4WD": {}}
     qualifier_results = database[RESULTS_KEY][QUALIFIERS_NAME]
-    
+
     def _group_sort_fn(item):
         group, results = item
         positions = results["positions"]
@@ -593,11 +594,16 @@ def _get_next_race(database):
     return None, None, None, None
 
 
-def add_new_result(drivers_to_exclude=None):
-    database = _get_database()
+def _read_results():
     parser = htmlparsing.RCMHtmlParser()
     html_file_contents = filelocation.find_and_read_latest_html_file()
     parser.parse_data(html_file_contents)
+    return parser
+
+
+def add_new_result(drivers_to_exclude=None):
+    database = _get_database()
+    parser = _read_results()
 
     total_times = htmlparsing.get_total_times(parser)
     num_laps_driven = htmlparsing.get_num_laps_driven(parser)
@@ -693,7 +699,7 @@ def add_new_result_manually():
             print("Please manually remove the old winner from the next start list before doing so!")
             if not _confirm_yes_no("Have you done that?"):
                 return
-    
+
     print("Enter the drivers in the order they finished.")
     positions = []
     while True:

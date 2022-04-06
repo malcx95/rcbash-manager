@@ -33,7 +33,6 @@ class RCMHtmlParser(HTMLParser):
         self._driver_index = 0
         self._result_header_index_start = 0
 
-
     def parse_data(self, contents):
         self.feed(contents)
         for number_name in self.result_header:
@@ -142,7 +141,7 @@ class RCMHtmlParser(HTMLParser):
         if self._parsing_data:
             if not self._parsing_header:
                 self._handle_laptime_row(data)
-                
+
         elif self._parsing_result_header and self._parsing_table:
             if data.strip() != "" and "# nr" not in data.lower():
                 data_split = data.strip().split(" ")
