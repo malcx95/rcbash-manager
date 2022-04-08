@@ -20,7 +20,10 @@ class ResultCalculationTests(TestCase):
         resultcalculation.RESULT_FOLDER_PATH = Path("test_rcbash_results")
         resultcalculation.RESULT_FOLDER_PATH.mkdir(exist_ok=True)
 
-    def _to_list_of_lists(self, list_of_tuples):
+    def setup_fake_input(self, entered_inputs):
+        resultcalculation._input = mock.Mock(side_effect=entered_inputs)
+
+    def to_list_of_lists(self, list_of_tuples):
         return [list(t) for t in list_of_tuples]
 
     def setup_fake_html_parsing(self, total_times, num_laps_driven, best_laptimes):
@@ -50,7 +53,7 @@ class ResultCalculationTests(TestCase):
             "90", "90", "67", "68", "36", "", "y", # 4WD B
             "", "y"
         ]
-        resultcalculation._input = mock.Mock(side_effect=participants_entered)
+        self.setup_fake_input(participants_entered)
         resultcalculation.create_qualifiers()
         database = resultcalculation._get_database()
 
@@ -67,49 +70,92 @@ class ResultCalculationTests(TestCase):
         self.assertEqual(database["current_heat"], 0)
 
     def test_add_new_result_qualifiers(self):
-        initial_start_lists = {
-            "Kval": {
-                "2WD": {"A": [90, 89, 11, 47], "B": [12, 27, 29], "C": [21, 22, 26]},
-                "4WD": {"A": [35, 49, 51], "B": [67, 68, 36]},
+        list_of_initial_start_lists = [
+            {
+                "Kval": {
+                    "2WD": {"A": [90, 89, 11, 47], "B": [12, 27, 29], "C": [21, 22, 26]},
+                    "4WD": {"A": [35, 49, 51], "B": [67, 68, 36]},
+                }
             }
-        }
-        self.setup_database_state(initial_start_lists, {}, 0)
-        total_times = {
-            89: Duration(minutes=21),
-            90: Duration(minutes=20),
-            47: Duration(minutes=18, milliseconds=1),
-            11: Duration(minutes=19, milliseconds=1),
-        }
-        num_laps_driven = { 90: 20, 89: 20, 11: 21, 47: 19 }
-        best_laptimes = [
-            (89, Duration(minutes=1)),
-            (90, Duration(seconds=30)),
-            (47, Duration(seconds=31, milliseconds=1)),
-            (11, Duration(seconds=19, milliseconds=1)),
         ]
-        self.setup_fake_html_parsing(total_times, num_laps_driven, best_laptimes)
-
-        expected_average = self._to_list_of_lists(
-            htmlparsing.get_average_laptimes(total_times, num_laps_driven))
-        expected_results = {
-            QUALIFIERS_NAME: {
-                "2WD": {
-                    "A": {
-                        "positions": [11, 90, 89, 47],
-                        "num_laps_driven": num_laps_driven,
-                        "total_times": total_times,
-                        "best_laptimes": self._to_list_of_lists(best_laptimes),
-                        "average_laptimes": expected_average,
-                        "manual": False
-                    }
-                },
-                "4WD": {}
+        list_of_total_times = [
+            {
+                89: Duration(minutes=21),
+                90: Duration(minutes=20),
+                47: Duration(minutes=18, milliseconds=1),
+                11: Duration(minutes=19, milliseconds=1),
             }
-        }
-        resultcalculation.add_new_result()
-        database = resultcalculation._get_database()
-        self.assertDictEqual(database[RESULTS_KEY], expected_results,
-                             "Results were not added correctly!")
-        self.assertDictEqual(database[START_LISTS_KEY], initial_start_lists,
-                             "Start lists were changed!")
-        self.assertEqual(database[CURRENT_HEAT_KEY], 0, "Current heat was changed!")
+        ]
+        list_of_num_laps_driven = [
+            { 90: 20, 89: 20, 11: 21, 47: 19 }
+        ]
+        list_of_best_laptimes = [
+            [
+                (89, Duration(minutes=1)),
+                (90, Duration(seconds=30)),
+                (47, Duration(seconds=31, milliseconds=1)),
+                (11, Duration(seconds=19, milliseconds=1)),
+            ]
+        ]
+
+        list_of_expected_positions = [
+            [11, 90, 89, 47],
+        ]
+
+        list_of_expected_groups = [
+            "A",
+        ]
+
+        list_of_expected_classes = [
+            "2WD",
+        ]
+
+        self.setup_fake_input(["y"])
+        for (initial_start_lists,
+             total_times,
+             num_laps_driven,
+             best_laptimes,
+             expected_positions,
+             expected_group,
+             expected_class
+            ) in zip(
+                 list_of_initial_start_lists,
+                 list_of_total_times,
+                 list_of_num_laps_driven,
+                 list_of_best_laptimes,
+                 list_of_expected_positions,
+                 list_of_expected_groups,
+                 list_of_expected_classes,
+            ):
+
+            self.setup_database_state(initial_start_lists, {}, 0)
+            self.setup_fake_html_parsing(total_times, num_laps_driven, best_laptimes)
+
+            not_class = {"4WD": "2WD", "2WD": "4WD"}[expected_class]
+
+            expected_average = self.to_list_of_lists(
+                htmlparsing.get_average_laptimes(total_times, num_laps_driven))
+
+            expected_results = {
+                QUALIFIERS_NAME: {
+                    expected_class: {
+                        expected_group: {
+                            "positions": expected_positions,
+                            "num_laps_driven": num_laps_driven,
+                            "total_times": total_times,
+                            "best_laptimes": self.to_list_of_lists(best_laptimes),
+                            "average_laptimes": expected_average,
+                            "manual": False
+                        }
+                    },
+                    not_class: {}
+                }
+            }
+
+            resultcalculation.add_new_result()
+            database = resultcalculation._get_database()
+            self.assertDictEqual(database[RESULTS_KEY], expected_results,
+                                 "Results were not added correctly!")
+            self.assertDictEqual(database[START_LISTS_KEY], initial_start_lists,
+                                 "Start lists were changed!")
+            self.assertEqual(database[CURRENT_HEAT_KEY], 0, "Current heat was changed!")
