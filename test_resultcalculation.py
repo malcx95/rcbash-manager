@@ -1,4 +1,5 @@
 import resultcalculation
+import copy
 from resultcalculation import QUALIFIERS_NAME, START_LISTS_KEY, RESULTS_KEY, \
     CURRENT_HEAT_KEY, ALL_PARTICIPANTS_KEY
 import htmlparsing
@@ -94,7 +95,6 @@ class ResultCalculationTests(TestCase):
                             )
         self.assertDictEqual(expected, actual, "Something unexpected is wrong with the results!")
 
-
     def test_create_qualifiers(self):
         participants_entered = [
             "90", "90", "89", "1", "11", "", "y", # 2WD A
@@ -134,6 +134,12 @@ class ResultCalculationTests(TestCase):
                     "4WD": {"A": [35, 49, 51], "B": [67, 68, 36]},
                 }
             },
+            {  # 2WD dns
+                "Kval": {
+                    "2WD": {"A": [90, 89, 11, 47], "B": [12, 27, 29], "C": [21, 22, 26]},
+                    "4WD": {"A": [35, 49, 51], "B": [67, 68, 36]},
+                }
+            },
         ]
         list_of_total_times = [
             { # normal 2WD qualifier
@@ -147,10 +153,16 @@ class ResultCalculationTests(TestCase):
                 68: Duration(minutes=20),
                 36: Duration(minutes=18, milliseconds=1),
             },
+            { # 2WD dns
+                89: Duration(minutes=21),
+                90: Duration(minutes=20),
+                11: Duration(minutes=19, milliseconds=1),
+            },
         ]
         list_of_num_laps_driven = [
             { 90: 20, 89: 20, 11: 21, 47: 19 }, # normal 2WD qualifier
             { 67: 20, 68: 21, 36: 19 }, # normal 4WD qualifier
+            { 90: 20, 89: 20, 11: 21 }, # 2WD dns
         ]
         list_of_best_laptimes = [
             [ # normal 2WD qualifier
@@ -164,26 +176,41 @@ class ResultCalculationTests(TestCase):
                 (68, Duration(seconds=31, milliseconds=1)),
                 (36, Duration(seconds=19, milliseconds=1)),
             ],
+            [ # 2WD dns
+                (89, Duration(minutes=1)),
+                (90, Duration(seconds=30)),
+                (11, Duration(seconds=19, milliseconds=1)),
+            ],
         ]
 
         list_of_expected_positions = [
             [11, 90, 89, 47],  # normal 2WD qualifier
             [68, 67, 36],  # normal 4WD qualifier
+            [11, 90, 89, 47],  # 2WD dns
         ]
 
         list_of_expected_groups = [
             "A",  # normal 2WD qualifier
             "B",  # normal 4WD qualifier
+            "A",  # 2WD dns
         ]
 
         list_of_expected_classes = [
             "2WD",  # normal 2WD qualifier
             "4WD",  # normal 4WD qualifier
+            "2WD",  # 2WD dns
         ]
 
         list_of_descriptions = [
             "Normal 2WD qualifier",
             "Normal 4WD qualifier",
+            "2WD DNS",
+        ]
+
+        list_of_expected_dns = [
+            None,  # normal 2WD qualifier
+            None,  # normal 4WD qualifier
+            [47],  # 2WD dns
         ]
 
         for (initial_start_lists,
@@ -193,6 +220,7 @@ class ResultCalculationTests(TestCase):
              expected_positions,
              expected_group,
              expected_class,
+             expected_dns,
              description,
             ) in zip(
                  list_of_initial_start_lists,
@@ -202,6 +230,7 @@ class ResultCalculationTests(TestCase):
                  list_of_expected_positions,
                  list_of_expected_groups,
                  list_of_expected_classes,
+                 list_of_expected_dns,
                  list_of_descriptions,
             ):
 
@@ -213,17 +242,21 @@ class ResultCalculationTests(TestCase):
             expected_average = self.to_list_of_lists(
                 htmlparsing.get_average_laptimes(total_times, num_laps_driven))
 
+            expected_group_results = {
+                "positions": expected_positions,
+                "num_laps_driven": num_laps_driven,
+                "total_times": total_times,
+                "best_laptimes": self.to_list_of_lists(best_laptimes),
+                "average_laptimes": expected_average,
+                "manual": False
+            }
+            if expected_dns is not None:
+                expected_group_results["dns"] = expected_dns
+
             expected_results = {
                 QUALIFIERS_NAME: {
                     expected_class: {
-                        expected_group: {
-                            "positions": expected_positions,
-                            "num_laps_driven": num_laps_driven,
-                            "total_times": total_times,
-                            "best_laptimes": self.to_list_of_lists(best_laptimes),
-                            "average_laptimes": expected_average,
-                            "manual": False
-                        }
+                        expected_group: expected_group_results
                     },
                     not_class: {}
                 }
