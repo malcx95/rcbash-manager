@@ -1,0 +1,474 @@
+{
+  "all_participants": [
+    37,
+    88,
+    27,
+    65,
+    71,
+    22,
+    41,
+    19,
+    62,
+    11,
+    45,
+    75,
+    67,
+    60,
+    90,
+    36,
+    64,
+    82,
+    83,
+    77,
+    89,
+    39,
+    46
+  ],
+  "start_lists": {
+    "Kval": {
+      "2WD": {
+        "A": [
+          37,
+          88,
+          27,
+          65,
+          71
+        ],
+        "B": [
+          22,
+          41,
+          19,
+          62
+        ]
+      },
+      "4WD": {
+        "A": [
+          11,
+          45,
+          75,
+          67,
+          60
+        ],
+        "B": [
+          90,
+          36,
+          64,
+          82,
+          83
+        ],
+        "C": [
+          77,
+          89,
+          39,
+          46
+        ]
+      }
+    }
+  },
+  "results": {
+    "Kval": {
+      "2WD": {
+        "B": {
+          "positions": [
+            22,
+            19,
+            62,
+            41
+          ],
+          "num_laps_driven": {
+            "22": 10,
+            "19": 8,
+            "62": 6
+          },
+          "total_times": {
+            "22": {
+              "milliseconds": 460742
+            },
+            "19": {
+              "milliseconds": 492307
+            },
+            "62": {
+              "milliseconds": 479148
+            }
+          },
+          "best_laptimes": [
+            [
+              22,
+              {
+                "milliseconds": 42101
+              }
+            ],
+            [
+              62,
+              {
+                "milliseconds": 45114
+              }
+            ],
+            [
+              19,
+              {
+                "milliseconds": 51813
+              }
+            ]
+          ],
+          "average_laptimes": [
+            [
+              22,
+              {
+                "milliseconds": 46074
+              }
+            ],
+            [
+              19,
+              {
+                "milliseconds": 61538
+              }
+            ],
+            [
+              62,
+              {
+                "milliseconds": 79858
+              }
+            ]
+          ],
+          "manual": false,
+          "dns": [
+            41
+          ]
+        },
+        "A": {
+          "positions": [
+            37,
+            27,
+            71,
+            88,
+            65
+          ],
+          "num_laps_driven": {
+            "37": 11,
+            "27": 10,
+            "71": 10,
+            "88": 9,
+            "65": 8
+          },
+          "total_times": {
+            "37": {
+              "milliseconds": 480880
+            },
+            "27": {
+              "milliseconds": 465650
+            },
+            "71": {
+              "milliseconds": 478105
+            },
+            "88": {
+              "milliseconds": 437716
+            },
+            "65": {
+              "milliseconds": 444612
+            }
+          },
+          "best_laptimes": [
+            [
+              37,
+              {
+                "milliseconds": 41566
+              }
+            ],
+            [
+              88,
+              {
+                "milliseconds": 43179
+              }
+            ],
+            [
+              71,
+              {
+                "milliseconds": 43190
+              }
+            ],
+            [
+              27,
+              {
+                "milliseconds": 43212
+              }
+            ],
+            [
+              65,
+              {
+                "milliseconds": 45388
+              }
+            ]
+          ],
+          "average_laptimes": [
+            [
+              37,
+              {
+                "milliseconds": 43716
+              }
+            ],
+            [
+              27,
+              {
+                "milliseconds": 46565
+              }
+            ],
+            [
+              71,
+              {
+                "milliseconds": 47810
+              }
+            ],
+            [
+              88,
+              {
+                "milliseconds": 48635
+              }
+            ],
+            [
+              65,
+              {
+                "milliseconds": 55576
+              }
+            ]
+          ],
+          "manual": false
+        }
+      },
+      "4WD": {
+        "C": {
+          "positions": [
+            77,
+            89,
+            39,
+            46
+          ],
+          "num_laps_driven": {
+            "77": 12,
+            "89": 11,
+            "39": 11
+          },
+          "total_times": {
+            "77": {
+              "milliseconds": 474095
+            },
+            "89": {
+              "milliseconds": 457057
+            },
+            "39": {
+              "milliseconds": 495771
+            }
+          },
+          "best_laptimes": [
+            [
+              77,
+              {
+                "milliseconds": 37300
+              }
+            ],
+            [
+              89,
+              {
+                "milliseconds": 38301
+              }
+            ],
+            [
+              39,
+              {
+                "milliseconds": 39807
+              }
+            ]
+          ],
+          "average_laptimes": [
+            [
+              77,
+              {
+                "milliseconds": 39507
+              }
+            ],
+            [
+              89,
+              {
+                "milliseconds": 41550
+              }
+            ],
+            [
+              39,
+              {
+                "milliseconds": 45070
+              }
+            ]
+          ],
+          "manual": false,
+          "dns": [46]
+        },
+        "B": {
+          "positions": [
+            90,
+            36,
+            82,
+            83,
+            64
+          ],
+          "num_laps_driven": {
+            "90": 12,
+            "36": 11,
+            "82": 11,
+            "83": 10,
+            "64": 8
+          },
+          "total_times": {
+            "90": {
+              "milliseconds": 473432
+            },
+            "36": {
+              "milliseconds": 490209
+            },
+            "82": {
+              "milliseconds": 495745
+            },
+            "83": {
+              "milliseconds": 481554
+            },
+            "64": {
+              "milliseconds": 435459
+            }
+          },
+          "best_laptimes": [
+            [
+              90,
+              {
+                "milliseconds": 35420
+              }
+            ],
+            [
+              36,
+              {
+                "milliseconds": 38873
+              }
+            ],
+            [
+              82,
+              {
+                "milliseconds": 39002
+              }
+            ],
+            [
+              83,
+              {
+                "milliseconds": 39454
+              }
+            ],
+            [
+              64,
+              {
+                "milliseconds": 43898
+              }
+            ]
+          ],
+          "average_laptimes": [
+            [
+              90,
+              {
+                "milliseconds": 39452
+              }
+            ],
+            [
+              36,
+              {
+                "milliseconds": 44564
+              }
+            ],
+            [
+              82,
+              {
+                "milliseconds": 45067
+              }
+            ],
+            [
+              83,
+              {
+                "milliseconds": 48155
+              }
+            ],
+            [
+              64,
+              {
+                "milliseconds": 54432
+              }
+            ]
+          ],
+          "manual": false
+        },
+        "A": {
+          "positions": [
+            75,
+            45,
+            67,
+            11,
+            60
+          ],
+          "num_laps_driven": {
+            "75": 11,
+            "45": 10,
+            "67": 10
+          },
+          "total_times": {
+            "75": {
+              "milliseconds": 462391
+            },
+            "45": {
+              "milliseconds": 450019
+            },
+            "67": {
+              "milliseconds": 461973
+            }
+          },
+          "best_laptimes": [
+            [
+              75,
+              {
+                "milliseconds": 37765
+              }
+            ],
+            [
+              45,
+              {
+                "milliseconds": 38834
+              }
+            ],
+            [
+              67,
+              {
+                "milliseconds": 40983
+              }
+            ]
+          ],
+          "average_laptimes": [
+            [
+              75,
+              {
+                "milliseconds": 42035
+              }
+            ],
+            [
+              45,
+              {
+                "milliseconds": 45001
+              }
+            ],
+            [
+              67,
+              {
+                "milliseconds": 46197
+              }
+            ]
+          ],
+          "manual": false,
+          "dns": [11, 60]
+        }
+      }
+    }
+  },
+  "current_heat": 0
+}

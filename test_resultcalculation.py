@@ -1,7 +1,9 @@
 import resultcalculation
+import json
+import os
 import copy
 from resultcalculation import QUALIFIERS_NAME, START_LISTS_KEY, RESULTS_KEY, \
-    CURRENT_HEAT_KEY, ALL_PARTICIPANTS_KEY
+    CURRENT_HEAT_KEY, ALL_PARTICIPANTS_KEY, EIGHTH_FINAL_NAME
 import htmlparsing
 from duration import Duration
 from pathlib import Path
@@ -9,7 +11,20 @@ from pyfakefs.fake_filesystem_unittest import TestCase
 import unittest.mock as mock
 
 
+TEST_DATABASE_PATH = "./testdata/testdatabases"
+
+
 class ResultCalculationTests(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.test_databases = {}
+        database_files = os.listdir(TEST_DATABASE_PATH)
+        for db in database_files:
+            path = os.path.join(TEST_DATABASE_PATH, db)
+            name = db.split(".json")[0]
+            with open(path) as f:
+                cls.test_databases[name] = json.load(f)
 
     def setUp(self):
         self.clipboard = None
@@ -166,21 +181,21 @@ class ResultCalculationTests(TestCase):
         ]
         list_of_best_laptimes = [
             [ # normal 2WD qualifier
-                (89, Duration(minutes=1)),
+                (11, Duration(seconds=19, milliseconds=1)),
                 (90, Duration(seconds=30)),
                 (47, Duration(seconds=31, milliseconds=1)),
-                (11, Duration(seconds=19, milliseconds=1)),
+                (89, Duration(minutes=1)),
             ],
             [ # normal 4WD qualifier
+                (36, Duration(seconds=19, milliseconds=1)),
                 (67, Duration(seconds=30)),
                 (68, Duration(seconds=31, milliseconds=1)),
-                (36, Duration(seconds=19, milliseconds=1)),
             ],
             [ # 2WD dns
-                (89, Duration(minutes=1)),
-                (90, Duration(seconds=30)),
                 (11, Duration(seconds=19, milliseconds=1)),
-            ],
+                (90, Duration(seconds=30)),
+                (89, Duration(minutes=1)),
+            ]
         ]
 
         list_of_expected_positions = [
@@ -270,3 +285,101 @@ class ResultCalculationTests(TestCase):
                 self.assertDictEqual(database[START_LISTS_KEY], initial_start_lists,
                                      "Start lists were changed!")
                 self.assertEqual(database[CURRENT_HEAT_KEY], 0, "Current heat was changed!")
+
+    def test_start_new_race_round_qualifiers_normal(self):
+        database = self.test_databases["test_start_new_race_round_qualifiers_normal"]
+        resultcalculation._save_database(database)
+        self.setup_fake_input(["y"])
+
+        resultcalculation.start_new_race_round()
+
+        expected_new_start_lists = {
+            "2WD": {
+                "A": [37, 22, 27, 41, 71],
+                "B": [19, 88, 62, 65]
+            },
+            "4WD": {
+                "A": [11, 90, 77, 75, 36],
+                "B": [89, 45, 82, 39, 67],
+                "C": [83, 46, 60, 64]
+            }
+        }
+        new_database = resultcalculation._get_database()
+        self.assertDictEqual(new_database[START_LISTS_KEY][EIGHTH_FINAL_NAME],
+                             expected_new_start_lists,
+                             "Start lists were incorrectly made from qualifiers!")
+
+    def test_start_new_race_round_qualifiers_dns(self):
+        database = self.test_databases["test_start_new_race_round_qualifiers_dns"]
+        resultcalculation._save_database(database)
+        self.setup_fake_input(["y"])
+
+        resultcalculation.start_new_race_round()
+
+        expected_new_start_lists = {
+            "2WD": {
+                "A": [37, 22, 27, 19, 71],
+                "B": [62, 88, 41, 65]
+            },
+            "4WD": {
+                "A": [90, 77, 75, 36, 89],
+                "B": [45, 82, 39, 67, 83],
+                "C": [46, 11, 64, 60]
+            }
+        }
+        new_database = resultcalculation._get_database()
+        self.assertDictEqual(new_database[START_LISTS_KEY][EIGHTH_FINAL_NAME],
+                             expected_new_start_lists,
+                             "Start lists were incorrectly made from qualifiers!")
+
+    def test_start_new_race_round_qualifiers_merge_groups(self):
+        database = self.test_databases["test_start_new_race_round_qualifiers_normal"]
+        resultcalculation._save_database(database)
+        self.setup_fake_input([
+            "n",  # don't use current groups
+            "A",  # merge all 2WD to A
+            "B",  # merge 4WD to B
+            "y"   # accept
+        ])
+
+        resultcalculation.start_new_race_round()
+
+        expected_new_start_lists = {
+            "2WD": {
+                "A": [37, 22, 27, 41, 71, 19, 88, 62, 65],
+            },
+            "4WD": {
+                "A": [11, 90, 77, 75, 36, 89, 45],
+                "B": [82, 39, 67, 83, 46, 60, 64],
+            }
+        }
+        new_database = resultcalculation._get_database()
+        self.assertDictEqual(new_database[START_LISTS_KEY][EIGHTH_FINAL_NAME],
+                             expected_new_start_lists,
+                             "Start lists were incorrectly made from qualifiers!")
+
+    def test_start_new_race_round_qualifiers_merge_groups_dns(self):
+        database = self.test_databases["test_start_new_race_round_qualifiers_dns"]
+        resultcalculation._save_database(database)
+        self.setup_fake_input([
+            "n",  # don't use current groups
+            "A",  # merge all 2WD to A
+            "B",  # merge 4WD to B
+            "y"   # accept
+        ])
+
+        resultcalculation.start_new_race_round()
+
+        expected_new_start_lists = {
+            "2WD": {
+                "A": [37, 22, 27, 19, 71, 62, 88, 41, 65],
+            },
+            "4WD": {
+                "A": [90, 77, 75, 36, 89, 45, 82],
+                "B": [39, 67, 83, 46, 11, 64, 60],
+            }
+        }
+        new_database = resultcalculation._get_database()
+        self.assertDictEqual(new_database[START_LISTS_KEY][EIGHTH_FINAL_NAME],
+                             expected_new_start_lists,
+                             "Start lists were incorrectly made from qualifiers!")
