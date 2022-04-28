@@ -3,7 +3,7 @@ import json
 import os
 import copy
 from resultcalculation import QUALIFIERS_NAME, START_LISTS_KEY, RESULTS_KEY, \
-    CURRENT_HEAT_KEY, ALL_PARTICIPANTS_KEY, EIGHTH_FINAL_NAME
+    CURRENT_HEAT_KEY, ALL_PARTICIPANTS_KEY, EIGHTH_FINAL_NAME, FINALS_NAME
 import htmlparsing
 from duration import Duration
 from pathlib import Path
@@ -35,6 +35,10 @@ class ResultCalculationTests(TestCase):
         self.setUpPyfakefs(modules_to_reload=[resultcalculation])
         resultcalculation.RESULT_FOLDER_PATH = Path("test_rcbash_results")
         resultcalculation.RESULT_FOLDER_PATH.mkdir(exist_ok=True)
+
+    def tearDown(self):
+        # TODO make this a parameter
+        resultcalculation.MAX_NUM_PARTICIPANTS_PER_GROUP = 6
 
     def setup_fake_input(self, entered_inputs):
         resultcalculation._input = mock.Mock(side_effect=entered_inputs)
@@ -383,3 +387,56 @@ class ResultCalculationTests(TestCase):
         self.assertDictEqual(new_database[START_LISTS_KEY][EIGHTH_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made from qualifiers!")
+
+    def test_start_new_race_round_finals_normal(self):
+        database = self.test_databases["test_start_new_race_round_finals_normal"]
+        resultcalculation._save_database(database)
+        # self.setup_fake_input(["y"])
+
+        # TODO make this a parameter
+        resultcalculation.MAX_NUM_PARTICIPANTS_PER_GROUP = 6
+
+        resultcalculation.start_new_race_round()
+
+        # TODO validate these
+        expected_new_start_lists = {
+            "2WD": {
+                "A": [37, 22, 88, 27, 41], # 1 person will be missing from each higher heat
+                "B": [65, 62, 19, 71]
+            },
+            "4WD": {
+                "A": [11, 77, 90, 36, 75],
+                "B": [45, 39, 46, 89, 82],
+                "C": [67, 83, 60, 64]
+            }
+        }
+        new_database = resultcalculation._get_database()
+        self.assertDictEqual(new_database[START_LISTS_KEY][FINALS_NAME],
+                             expected_new_start_lists,
+                             "Start lists were incorrectly made for finals!")
+
+    def test_start_new_race_round_finals_many_people_per_heat(self):
+        database = self.test_databases["test_start_new_race_round_finals_normal"]
+
+        # TODO make this a parameter
+        resultcalculation.MAX_NUM_PARTICIPANTS_PER_GROUP = 9
+
+        resultcalculation._save_database(database)
+        # self.setup_fake_input(["y"])
+
+        resultcalculation.start_new_race_round()
+
+        # TODO validate these
+        expected_new_start_lists = {
+            "2WD": {
+                "A": [37, 22, 88, 27, 41, 65, 62, 19, 71],
+            },
+            "4WD": {
+                "A": [11, 77, 90, 36, 75, 45, 39, 46],
+                "B": [89, 82, 67, 83, 60, 64],
+            }
+        }
+        new_database = resultcalculation._get_database()
+        self.assertDictEqual(new_database[START_LISTS_KEY][FINALS_NAME],
+                             expected_new_start_lists,
+                             "Start lists were incorrectly made for finals!")
