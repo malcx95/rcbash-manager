@@ -2,7 +2,7 @@ import os
 import time
 
 
-DRIVE_MOUNT_LOCATION = "/mnt/usb-Kingston_DataTraveler_3.0_E0D55EA49333F430595B233C-0:0-part1/"
+DRIVE_MOUNT_LOCATION = "/mnt/KingstonDrive/"
 
 
 def find_and_read_latest_html_file():

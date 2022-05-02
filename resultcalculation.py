@@ -15,7 +15,7 @@ import argparse
 import clipboard
 import copy
 
-MAX_NUM_PARTICIPANTS_PER_GROUP = 6
+MAX_NUM_PARTICIPANTS_PER_GROUP = 10
 
 RESULT_FOLDER_PATH = Path.home() / "RCBashResults"
 
@@ -443,30 +443,34 @@ def _create_start_list_intermediate_races(groups, database, race):
     for rcclass in start_lists:
         group_results = sorted(copy.deepcopy(results[rcclass]).items(), key=lambda k: k[0])
 
-        new_start_lists = {}
-        for i in range(len(group_results) - 1):
-            higher_group, higher_results = group_results[i]
-            lower_group, lower_results = group_results[i + 1]
+        if len(group_results) == 1:
+            start_lists[rcclass]["A"] = group_results[0][1]["positions"]
 
-            higher_positions = higher_results["positions"]
-            lower_positions = lower_results["positions"]
+        else:
+            new_start_lists = {}
+            for i in range(len(group_results) - 1):
+                higher_group, higher_results = group_results[i]
+                lower_group, lower_results = group_results[i + 1]
 
-            higher_slowest = higher_positions.pop()
-            higher_second_slowest = higher_positions.pop()
+                higher_positions = higher_results["positions"]
+                lower_positions = lower_results["positions"]
 
-            lower_fastest = lower_positions.pop(0)
-            lower_second_fastest = lower_positions.pop(0)
-            
-            higher_positions.append(lower_fastest)
-            higher_positions.append(lower_second_fastest)
+                higher_slowest = higher_positions.pop()
+                higher_second_slowest = higher_positions.pop()
 
-            lower_positions.insert(0, higher_slowest)
-            lower_positions.insert(0, higher_second_slowest)
+                lower_fastest = lower_positions.pop(0)
+                lower_second_fastest = lower_positions.pop(0)
 
-            new_start_lists[higher_group] = higher_positions
-            new_start_lists[lower_group] = lower_positions
+                higher_positions.append(lower_fastest)
+                higher_positions.append(lower_second_fastest)
 
-        start_lists[rcclass] = new_start_lists
+                lower_positions.insert(0, higher_slowest)
+                lower_positions.insert(0, higher_second_slowest)
+
+                new_start_lists[higher_group] = higher_positions
+                new_start_lists[lower_group] = lower_positions
+
+            start_lists[rcclass] = new_start_lists
     return start_lists, _remove_and_return_duplicate_drivers(start_lists)
 
 
@@ -543,7 +547,7 @@ def start_new_race_round():
     current_heat = database[CURRENT_HEAT_KEY]
     current_heat += 1
     database[CURRENT_HEAT_KEY] = current_heat
-    
+
     database[START_LISTS_KEY][RACE_ORDER[current_heat]] = new_start_lists
 
     show_current_heat_start_list(database)
@@ -628,6 +632,7 @@ def add_new_result(drivers_to_exclude=None):
             del total_times[num]
             del num_laps_driven[num]
             positions.remove(num)
+            # FIXME this doesn't work in manual mode
             best_laptimes = [(n, time) for n, time in best_laptimes if n != num]
             average_laptimes = [(n, time) for n, time in average_laptimes if n != num]
 
@@ -733,7 +738,7 @@ def add_new_result_manually():
         if total_times:
             del total_times[num]
             del num_laps_driven[num]
-            best_laptimes = [(n, time) for n, time in best_laptimes if n != num]
+            #best_laptimes = [(n, time) for n, time in best_laptimes if n != num]
             average_laptimes = [(n, time) for n, time in average_laptimes if n != num]
         positions.remove(num)
 
