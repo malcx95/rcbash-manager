@@ -3,7 +3,7 @@ import json
 import os
 import copy
 from resultcalculation import QUALIFIERS_NAME, START_LISTS_KEY, RESULTS_KEY, \
-    CURRENT_HEAT_KEY, ALL_PARTICIPANTS_KEY, EIGHTH_FINAL_NAME, FINALS_NAME
+    CURRENT_HEAT_KEY, ALL_PARTICIPANTS_KEY, EIGHTH_FINAL_NAME, QUARTER_FINAL_NAME, FINALS_NAME
 import htmlparsing
 from duration import Duration
 from pathlib import Path
@@ -422,7 +422,6 @@ class ResultCalculationTests(TestCase):
         resultcalculation.MAX_NUM_PARTICIPANTS_PER_GROUP = 9
 
         resultcalculation._save_database(database)
-        # self.setup_fake_input(["y"])
 
         resultcalculation.start_new_race_round()
 
@@ -440,3 +439,48 @@ class ResultCalculationTests(TestCase):
         self.assertDictEqual(new_database[START_LISTS_KEY][FINALS_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made for finals!")
+
+    def test_start_new_race_round_intermediate_normal(self):
+        database = self.test_databases["test_start_new_race_round_intermediate_normal"]
+        resultcalculation._save_database(database)
+
+        resultcalculation.start_new_race_round()
+
+        # TODO validate these
+        expected_new_start_lists = {
+            "2WD": {
+                "A": [37, 22, 27, 88, 65],
+                "B": [41, 71, 19, 62],
+            },
+            "4WD": {
+                "A": [11, 77, 90, 39, 45],
+                "B": [36, 75, 89, 46, 60],
+                "C": [67, 82, 64, 83]
+            }
+        }
+        new_database = resultcalculation._get_database()
+        self.assertDictEqual(new_database[START_LISTS_KEY][QUARTER_FINAL_NAME],
+                             expected_new_start_lists,
+                             "Start lists were incorrectly made for eight finals!")
+
+    def test_start_new_race_round_intermediate_only_A_heat(self):
+        database = self.test_databases["test_start_new_race_round_intermediate_one_heat"]
+        resultcalculation._save_database(database)
+
+        resultcalculation.start_new_race_round()
+
+        # TODO validate these
+        expected_new_start_lists = {
+            "2WD": {
+                "A": [88, 65, 19, 62, 37, 22, 27, 41, 71],
+            },
+            "4WD": {
+                "A": [11, 77, 90, 39, 45],
+                "B": [36, 75, 89, 46, 60],
+                "C": [67, 82, 64, 83]
+            }
+        }
+        new_database = resultcalculation._get_database()
+        self.assertDictEqual(new_database[START_LISTS_KEY][QUARTER_FINAL_NAME],
+                             expected_new_start_lists,
+                             "Start lists were incorrectly made for eight finals!")
