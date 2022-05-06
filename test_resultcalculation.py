@@ -3,7 +3,7 @@ import json
 import os
 import copy
 from resultcalculation import QUALIFIERS_NAME, START_LISTS_KEY, RESULTS_KEY, \
-    CURRENT_HEAT_KEY, ALL_PARTICIPANTS_KEY, EIGHTH_FINAL_NAME, QUARTER_FINAL_NAME, FINALS_NAME
+    CURRENT_HEAT_KEY, ALL_PARTICIPANTS_KEY, EIGHTH_FINAL_NAME, QUARTER_FINAL_NAME, FINALS_NAME, CURRENT_HEAT_KEY
 import htmlparsing
 from duration import Duration
 from pathlib import Path
@@ -446,7 +446,6 @@ class ResultCalculationTests(TestCase):
 
         resultcalculation.start_new_race_round()
 
-        # TODO validate these
         expected_new_start_lists = {
             "2WD": {
                 "A": [37, 22, 27, 88, 65],
@@ -462,6 +461,7 @@ class ResultCalculationTests(TestCase):
         self.assertDictEqual(new_database[START_LISTS_KEY][QUARTER_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made for eight finals!")
+        self.assertEqual(new_database[CURRENT_HEAT_KEY], 2, "Heat was not incremented!")
 
     def test_start_new_race_round_intermediate_only_A_heat(self):
         database = self.test_databases["test_start_new_race_round_intermediate_one_heat"]
@@ -469,7 +469,6 @@ class ResultCalculationTests(TestCase):
 
         resultcalculation.start_new_race_round()
 
-        # TODO validate these
         expected_new_start_lists = {
             "2WD": {
                 "A": [88, 65, 19, 62, 37, 22, 27, 41, 71],
@@ -484,3 +483,71 @@ class ResultCalculationTests(TestCase):
         self.assertDictEqual(new_database[START_LISTS_KEY][QUARTER_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made for eight finals!")
+        self.assertEqual(new_database[CURRENT_HEAT_KEY], 2, "Heat was not incremented!")
+
+    def test_calculate_cup_points(self):
+        database = self.test_databases["test_calculate_cup_points"]
+        resultcalculation._save_database(database)
+        database = resultcalculation._get_database()
+
+        points, points_per_race = resultcalculation._calculate_cup_points(database)
+
+        expected_total_points = {
+            37: 100,
+            22: 92,
+            88: 93,
+            41: 81,
+            27: 77,
+            35: 65,
+            19: 64,
+            65: 64,
+            29: 61,
+            71: 78,
+            11: 90,
+            90: 86,
+            77: 58,
+            45: 70,
+            36: 85,
+            21: 87,
+            89: 47,
+            75: 70,
+            82: 91,
+            46: 64,
+            26: 52
+        }
+        self.assertDictEqual(points, expected_total_points,
+                             "Points were calculated incorrectly!")
+
+        expected_points_per_race = {
+            "2WD": {
+                37: [20, 20, 20, 40],
+                22: [19, 19, 18, 36],
+                88: [18, 18, 19, 38],
+                27: [14, 16, 15, 32],
+                35: [15, 17, 11, 22],
+                29: [12, 11, 12, 26],
+                19: [11, 12, 13, 28],
+                41: [16, 14, 17, 34],
+                71: [17, 15, 16, 30],
+                65: [13, 13, 14, 24],
+            },
+            "4WD": {
+                11: [16, 14, 20, 40],
+                90: [17, 18, 17, 34],
+                45: [13, 19, 16, 22],
+                36: [19, 16, 14, 36],
+                77: [    13, 15, 30],
+                89: [    11, 10, 26],
+                46: [12, 12, 12, 28],
+                82: [14, 20, 19, 38],
+                21: [20, 17, 18, 32],
+                75: [18, 15, 13, 24],
+                26: [11, 10, 11, 20]
+            }
+        }
+        for rcclass in expected_points_per_race:
+            for num, expected_points_list in expected_points_per_race[rcclass].items():
+                self.assertListEqual(points_per_race[rcclass][num], expected_points_list,
+                                     f"Points per race for driver {num} in {rcclass} was incorrect!")
+        self.assertDictEqual(points_per_race, expected_points_per_race,
+                             "Points per race was incorrectly calculated! Extra drivers?")
