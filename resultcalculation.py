@@ -739,8 +739,6 @@ def add_new_result_manually():
         if total_times:
             del total_times[num]
             del num_laps_driven[num]
-            #best_laptimes = [(n, time) for n, time in best_laptimes if n != num]
-            average_laptimes = [(n, time) for n, time in average_laptimes if n != num]
         positions.remove(num)
 
     database[RESULTS_KEY][race][rcclass][group] = {}
