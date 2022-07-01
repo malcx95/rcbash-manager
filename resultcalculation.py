@@ -16,7 +16,7 @@ import clipboard
 import copy
 
 # TODO make this a parameter
-MAX_NUM_PARTICIPANTS_PER_GROUP = 10
+MAX_NUM_PARTICIPANTS_PER_GROUP = 9
 
 RESULT_FOLDER_PATH = Path.home() / "RCBashResults"
 

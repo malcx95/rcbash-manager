@@ -234,7 +234,7 @@ def create_race_start_message(heat_start_lists, race_order, race, rcclass, group
         start_list="\n".join(f"{i + 1}. {num} - {names.NAMES[num]}" for i, num in enumerate(start_list)),
         marshal_rcclass=previous_rcclass,
         marshal_group=previous_group,
-        marshals="\n".join(f"{num} - {names.NAMES[num]}" for num in marshal_list),
+        marshals="\n".join(f"{i + 1}. {num} - {names.NAMES[num]}" for i, num in enumerate(marshal_list)),
         race_flag=RACE_FLAG
     )
 
