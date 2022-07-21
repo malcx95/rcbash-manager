@@ -16,7 +16,7 @@ TABS = list(enumerate([
 def _render_page(active_index, selected_date):
     db_dates = rc.get_all_database_names()
     _, (active_tab, active_tab_readable, active_tab_icon) = TABS[active_index]
-    return flask.render_template("dashboard.html",
+    return flask.render_template(f"{active_tab}.html",
                                  tabs=TABS,
                                  db_dates=enumerate(db_dates),
                                  active_tab=active_tab,
