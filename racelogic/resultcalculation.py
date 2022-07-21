@@ -1,12 +1,13 @@
 from pathlib import Path
 from collections import defaultdict
+from typing import List, Dict, Tuple
 
-from names import NAMES
-from duration import Duration
+from racelogic.names import NAMES
+from racelogic.duration import Duration
 
-import filelocation
-import htmlparsing
-import textmessages
+import racelogic.filelocation
+import racelogic.htmlparsing
+import racelogic.textmessages
 
 import math
 import json
@@ -67,6 +68,8 @@ CLASS_ORDER = {
     FINALS_NAME: CLASS_ORDER_FINALS,
 }
 
+DB_DATE_FORMAT = "%y%m%d"
+
 
 def _input(text):
     return input(text)
@@ -74,7 +77,7 @@ def _input(text):
 
 def _get_todays_filename():
     todays_date = datetime.datetime.now()
-    todays_date_string = todays_date.strftime("%y%m%d")
+    todays_date_string = todays_date.strftime(DB_DATE_FORMAT)
     return todays_date_string + ".json"
 
 
@@ -857,6 +860,16 @@ def show_start_message():
     print(text_message)
 
     print("^^ Copied to clipboard")
+
+
+def get_all_database_names() -> List[str]:
+    all_files = sorted(RESULT_FOLDER_PATH.glob("??????.json"), reverse=True)
+    names = []
+    for filename in all_files:
+        raw_date = filename.stem
+        date = datetime.datetime.strptime(raw_date, DB_DATE_FORMAT).strftime("%Y-%m-%d")
+        names.append(date)
+    return names
 
 
 def main():
