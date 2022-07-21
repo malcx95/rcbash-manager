@@ -1,11 +1,10 @@
-from duration import Duration
+from racelogic.duration import Duration
 from functools import reduce
 
-import htmlparsing
-import names
+import racelogic.htmlparsing
+import racelogic.names
 
-#import matplotlib.pyplot as plt
-import filelocation
+import racelogic.filelocation
 import numpy as np
 import argparse
 import sys
