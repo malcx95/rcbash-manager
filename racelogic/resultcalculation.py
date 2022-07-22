@@ -1,6 +1,6 @@
 from pathlib import Path
 from collections import defaultdict
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Iterable
 
 from racelogic.names import NAMES
 from racelogic.duration import Duration
@@ -87,6 +87,16 @@ def _get_database():
     with open(RESULT_FOLDER_PATH / filename) as f:
         database = json.load(f)
     return _replace_with_durations(database)
+
+
+def _get_database_with_date(date: str, convert_to_durations=False) -> Dict:
+    # yeah this may not be the best design, to convert back and forth...
+    db_date = datetime.datetime.strptime(date, "%Y-%m-%d").strftime(DB_DATE_FORMAT)
+    filename = f"{db_date}.json"
+    database = None
+    with open(RESULT_FOLDER_PATH / filename) as f:
+        database = json.load(f)
+    return _replace_with_durations(database) if convert_to_durations else database
 
 
 def _replace_with_durations(database):
@@ -831,6 +841,23 @@ def show_current_heat_start_list(database=None):
     print("^^ Copied to clipboard")
 
 
+def get_all_start_lists(date) -> Iterable[Tuple[str, List]]:
+    database = _get_database_with_date(date, convert_to_durations=False)
+    start_lists = []
+    current_heat_index = database[CURRENT_HEAT_KEY]
+    for heat_index in range(current_heat_index + 1):
+        heat_name = RACE_ORDER[heat_index]
+
+        # we need to reverse all of them so they are in reverse cronological order
+        heat_start_lists = []
+        for rcclass, class_lists in reversed(list(database[START_LISTS_KEY][heat_name].items())):
+            group_lists = list(class_lists.items())
+            heat_start_lists.append((rcclass, group_lists))
+
+        start_lists.append((heat_name, heat_start_lists))
+    return reversed(start_lists)
+
+
 def show_current_points(verbose):
     database = _get_database()
     race = _get_current_heat(database)
@@ -862,7 +889,7 @@ def show_start_message():
     print("^^ Copied to clipboard")
 
 
-def get_all_database_names() -> List[str]:
+def get_all_dates() -> List[str]:
     all_files = sorted(RESULT_FOLDER_PATH.glob("??????.json"), reverse=True)
     names = []
     for filename in all_files:

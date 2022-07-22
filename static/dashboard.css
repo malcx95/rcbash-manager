@@ -94,3 +94,7 @@ body {
 .weak {
   color: gray;
 }
+
+.day-dropdown {
+  left: 30% !important;
+}

@@ -1,4 +1,42 @@
 {% extends "dashboard.html" %}
+<link href="/static/startlists.css" rel="stylesheet">
+{% block tab_title %}Startordningar{% endblock %}
 {% block content %}
-<h1>Startordningar</h1>
+<div class="container">
+  <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+  {% for heat_name, start_list in start_lists %}
+    {% for rcclass, class_lists in start_list %}
+      {% for group, group_list in class_lists %}
+      <div>
+        <div class="card startlistcard">
+          <h5 class="card-header"><b>{{ heat_name }}</b> {{ rcclass }} Grupp {{ group }}</h5>
+          <div class="card-body">
+            <div class="table-responsive">
+            <table class="table table-striped table-sm">
+              <thead>
+                <tr>
+                  <th scope="col"></th>
+                  <th scope="col">#</th>
+                  <th scope="col">Namn</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for num in group_list %}
+                  <tr>
+                    <td><b>{{ loop.index }}</b></td>
+                    <td>{{ num }}</td>
+                    <td>{{ names[num] }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    {% endfor %}
+  {% endfor %}
+  </div>
+</div>
 {% endblock %}
