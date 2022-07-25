@@ -8,6 +8,8 @@ from pathlib import Path
 
 app = Flask(__name__)
 
+IS_PRODUCTION = Path("/home/malcolm/isproduction").exists()
+
 START_LISTS_TAB = "startlists"
 RESULTS_TAB = "results"
 POINTS_TAB = "points"
@@ -94,4 +96,4 @@ def get_static(path):
     return flask.send_from_directory("static", path)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True)
+    app.run(host="0.0.0.0", debug=not IS_PRODUCTION)
