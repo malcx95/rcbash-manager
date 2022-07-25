@@ -15,11 +15,16 @@ import datetime
 import argparse
 import clipboard
 import copy
+import os
 
 # TODO make this a parameter
 MAX_NUM_PARTICIPANTS_PER_GROUP = 9
 
 RESULT_FOLDER_PATH = Path.home() / "RCBashResults"
+# this is necessary in production
+if Path("/home/malcolm/RCBashResults").exists():
+    RESULT_FOLDER_PATH = Path("/home/malcolm/RCBashResults")
+
 
 ALL_PARTICIPANTS_KEY = "all_participants"
 START_LISTS_KEY = "start_lists"
