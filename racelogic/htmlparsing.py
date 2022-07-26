@@ -1,7 +1,11 @@
 from html.parser import HTMLParser
 from functools import reduce
 from collections import defaultdict
-from racelogic.duration import Duration
+
+try:
+    from racelogic.duration import Duration
+except ImportError:
+    from duration import Duration
 
 
 class HeaderRow:

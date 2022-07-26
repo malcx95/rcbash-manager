@@ -26,8 +26,9 @@ def _render_page(active_index, selected_date):
     _, (active_tab, active_tab_readable, active_tab_icon) = TABS[active_index]
 
     start_lists = []
+    marshals = {}
     if active_tab == START_LISTS_TAB:
-        start_lists = rc.get_all_start_lists(selected_date)
+        start_lists, marshals = rc.get_all_start_lists(selected_date)
 
     return flask.render_template(f"{active_tab}.html",
                                  tabs=TABS,
@@ -37,6 +38,7 @@ def _render_page(active_index, selected_date):
                                  active_tab_icon=active_tab_icon,
                                  selected_date=selected_date,
                                  start_lists=start_lists,
+                                 marshals=marshals,
                                  names=NAMES,
                                  active_index=active_index)
 

@@ -2,12 +2,23 @@ from pathlib import Path
 from collections import defaultdict
 from typing import List, Dict, Tuple, Iterable
 
-from racelogic.names import NAMES
-from racelogic.duration import Duration
+try:
+    from racelogic.names import NAMES
+    from racelogic.duration import Duration
 
-import racelogic.filelocation
-import racelogic.htmlparsing
-import racelogic.textmessages
+    import racelogic.filelocation
+    import racelogic.htmlparsing
+    import racelogic.textmessages
+    import racelogic.util as util
+
+except ImportError:
+    from names import NAMES
+    from duration import Duration
+
+    import filelocation
+    import htmlparsing
+    import textmessages
+    import util
 
 import math
 import json
@@ -846,21 +857,52 @@ def show_current_heat_start_list(database=None):
     print("^^ Copied to clipboard")
 
 
-def get_all_start_lists(date) -> Iterable[Tuple[str, List]]:
+def get_all_start_lists(date) -> Tuple[Iterable[Tuple[str, List]], Dict[str, Dict]]:
     database = _get_database_with_date(date, convert_to_durations=False)
     start_lists = []
+    marshals = {}
     current_heat_index = database[CURRENT_HEAT_KEY]
+
+    next_heat, next_rcclass, next_group, _ = _get_next_race(database)
+
     for heat_index in range(current_heat_index + 1):
         heat_name = RACE_ORDER[heat_index]
 
-        # we need to reverse all of them so they are in reverse cronological order
+        marshals[heat_name] = {}
+
         heat_start_lists = []
-        for rcclass, class_lists in reversed(list(database[START_LISTS_KEY][heat_name].items())):
-            group_lists = list(class_lists.items())
-            heat_start_lists.append((rcclass, group_lists))
+        class_order = CLASS_ORDER[heat_name]
+
+        # we need to reverse all of them so they are in reverse cronological order
+        for race_index, (rcclass, group) in reversed(list(enumerate(class_order))):
+
+            is_next_race = next_heat == heat_name and \
+                next_rcclass == rcclass and \
+                next_group == group
+
+            class_list = database[START_LISTS_KEY][heat_name][rcclass]
+            if group not in class_list:
+                continue
+            group_list = class_list[group]
+
+            heat_start_lists.append((rcclass, group, group_list, is_next_race))
+
+            if rcclass not in marshals[heat_name]:
+                marshals[heat_name][rcclass] = {}
+
+            previous_rcclass, previous_group = \
+                util.get_previous_group_wrap_around(
+                    database[START_LISTS_KEY][heat_name],
+                    CLASS_ORDER[heat_name],
+                    race_index
+                )
+            previous_start_list = \
+                database[START_LISTS_KEY][heat_name][previous_rcclass][previous_group]
+            marshals[heat_name][rcclass][group] = \
+                (previous_rcclass, previous_group, previous_start_list)
 
         start_lists.append((heat_name, heat_start_lists))
-    return reversed(start_lists)
+    return reversed(start_lists), marshals
 
 
 def show_current_points(verbose):

@@ -1,15 +1,23 @@
 {% extends "dashboard.html" %}
-<link href="/static/startlists.css" rel="stylesheet">
 {% block tab_title %}Startordningar{% endblock %}
 {% block content %}
+<link href="/static/startlists.css" rel="stylesheet">
 <div class="container">
-  <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
   {% for heat_name, start_list in start_lists %}
-    {% for rcclass, class_lists in start_list %}
-      {% for group, group_list in class_lists %}
+    <div class="start-list-container rounded">
+      <div class="justify-content-between flex-wrap flex-md-nowrap border-bottom align-items-center pt-3 pb-2 mb-3">
+        <h2 class="h2 heat-heading"><strong>{{ heat_name }}</strong></h2>
+      </div>
+      <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+      {% for rcclass, group, group_list, is_next_race in start_list %}
       <div>
         <div class="card startlistcard">
-          <h5 class="card-header"><b>{{ heat_name }}</b> {{ rcclass }} Grupp {{ group }}</h5>
+          <h5 class="card-header {{ 'next-race-card-header' if is_next_race else ''}}">
+            <strong>{{ rcclass }}</strong> Grupp {{ group }}
+            {% if is_next_race %}
+              <strong>- Nästa race</strong>
+            {% endif %}
+          </h5>
           <div class="card-body">
             <div class="table-responsive">
             <table class="table table-striped table-sm">
@@ -30,13 +38,24 @@
                 {% endfor %}
               </tbody>
             </table>
+            <p>
+              <strong>
+                {{ marshals[heat_name][rcclass][group][0] }}
+                {{ marshals[heat_name][rcclass][group][1] }} vänder bilar:
+              </strong>
+            </p>
+            <p>
+              {% for num in marshals[heat_name][rcclass][group][2] %}
+                <span><strong>{{ loop.index }}.</strong> {{ names[num] }}</span>
+              {% endfor %}
+            </p>
             </div>
           </div>
         </div>
       </div>
       {% endfor %}
-    {% endfor %}
+      </div>
+    </div>
   {% endfor %}
-  </div>
 </div>
 {% endblock %}
