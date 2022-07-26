@@ -1,2 +1,18 @@
 .startlistcard {
 }
+
+.heat-heading {
+  text-align: center;
+  color: #352e84;
+}
+
+.start-list-container {
+  margin-bottom: 10px;
+  padding: 10px;
+  background-color: #eee;
+}
+
+.next-race-card-header {
+  background-color: #4a40c6;
+  color: white;
+}

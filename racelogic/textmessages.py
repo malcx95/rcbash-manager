@@ -1,10 +1,22 @@
-from racelogic.duration import Duration
 from functools import reduce
 
-import racelogic.htmlparsing
-import racelogic.names
+try:
+    from racelogic.duration import Duration
 
-import racelogic.filelocation
+    import racelogic.htmlparsing
+    import racelogic.names
+    import racelogic.util
+    import racelogic.filelocation
+except ImportError:
+    # i'm sorry this is ugly
+    from duration import Duration
+
+    import htmlparsing
+    import names
+    import util
+    import filelocation
+    
+
 import numpy as np
 import argparse
 import sys
@@ -176,7 +188,7 @@ def create_heat_start_list_text_message(heat_start_lists, race_order, race, extr
         start_list = heat_start_lists[rcclass][group]
         entries = [f"    {i + 1}. {number} - {names.NAMES[number]}"
                    for i, number in enumerate(start_list)]
-        previous_rcclass, previous_group = _get_previous_group_wrap_around(
+        previous_rcclass, previous_group = util.get_previous_group_wrap_around(
             heat_start_lists, race_order, index)
         marshal_text = f"{previous_rcclass} {previous_group}"
         start_list_texts.append(
@@ -222,7 +234,7 @@ def create_points_list_text_message(all_points, points_per_race, race, verbose):
 
 def create_race_start_message(heat_start_lists, race_order, race, rcclass, group, class_order_index):
     start_list = heat_start_lists[rcclass][group]
-    previous_rcclass, previous_group = _get_previous_group_wrap_around(
+    previous_rcclass, previous_group = util.get_previous_group_wrap_around(
         heat_start_lists, race_order, class_order_index)
     marshal_list = heat_start_lists[previous_rcclass][previous_group]
 
