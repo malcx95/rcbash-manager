@@ -1,0 +1,76 @@
+.winner {
+  color: #ac940f;
+}
+
+.second {
+  color: gray;
+}
+
+.third {
+  color: #d28800;
+}
+
+.podium {
+  width: 100%;
+  border-top-style: solid;
+  text-align: center;
+  border-color: black;
+  border-width: 1px;
+}
+
+.podium-step-1st {
+  background-color: #ac940f;
+  height: 100%;
+  border-radius: 10px 10px 0px 0px;
+  border-left-style: solid;
+  border-right-style: solid;
+}
+
+.podium-step-2nd {
+  background-color: gray;
+  height: 70%;
+  border-radius: 10px 0px 0px 0px;
+  border-left-style: solid;
+}
+
+.podium-step-3rd {
+  background-color: #d28800;
+  height: 50%;
+  border-radius: 0px 10px 0px 0px;
+  border-right-style: solid;
+}
+
+.podium-container {
+  height: 150px;
+  display: flex;
+  align-items: end;
+  padding-top: 15px;
+  margin-bottom: 5px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.podium-name {
+  font-size: 15px;
+  position: relative;
+  top: -30px;
+  color: gray;
+  white-space: nowrap;
+  padding: 4px;
+}
+
+.podium-emoji {
+  font-size: 47px;
+  display: block;
+  position: relative;
+  top: -33px;
+}
+
+.details-title {
+  white-space: nowrap;
+}
+
+.best-time {
+  color: #ca0000;
+  font-weight: bold;
+}

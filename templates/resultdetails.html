@@ -1,0 +1,65 @@
+{% extends "dashboard.html" %}
+{% block tab_title %}Resultatdetaljer för <span class="details-title"><strong>{{ results.heat_name }} {{ results.rcclass}} {{ results.group }}</strong></span>{% endblock %}
+{% block content %}
+<link href="/static/resultdetails.css" rel="stylesheet">
+<div class="podium-container">
+  <div class="podium podium-step-2nd">
+    <span class="podium-name">{{ names[results.positions[1]] }}</span>
+    <span class="podium-emoji">&#129352;</span></div>
+  <div class="podium podium-step-1st">
+    <span class="podium-name">{{ names[results.positions[0]] }}</span>
+    <span class="podium-emoji">&#129351;</span></div>
+  <div class="podium podium-step-3rd">
+    <span class="podium-name">{{ names[results.positions[2]] }}</span>
+    <span class="podium-emoji">&#129353;</span></div>
+</div>
+<div class="card result-card">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th scope="col"></th>
+            <th scope="col">#</th>
+            <th scope="col">Namn</th>
+            <th scope="col">Bästa varvtid</th>
+            <th scope="col">Genomsnittlig varvtid</th>
+            <th scope="col">Antal varv</th>
+            <th scope="col">Total tid</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for num in results.positions %}
+            <tr class="{{ result_table_classes.get(loop.index, '') }}">
+              {% if loop.index == 1 %}
+                <td>&#129351;</td>
+              {% elif loop.index == 2 %}
+                <td>&#129352;</td>
+              {% elif loop.index == 3 %}
+                <td>&#129353;</td>
+              {% else %}
+                <td><b>{{ loop.index }}</b></td>
+              {% endif %}
+              <td>{{ num }}</td>
+              <td>{{ names[num] }}</td>
+              <td class="{{ 'best-time' if results.has_best_laptime(num) else '' }}">
+                {{ results.best_laptimes_dict()[num] }}
+              </td>
+              <td>{{ results.average_laptimes_dict()[num] }}</td>
+              <td>{{ results.num_laps_driven[num] }}</td>
+              <td>{{ results.total_times[num] }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p><strong>{{ names[results.best_laptimes[0][0]] }}</strong> hade bästa varvtid på <span class="best-time">{{ results.best_laptimes[0][1] }}</span></p>
+    </div>
+  </div>
+</div>
+<!--<div>
+  <canvas id="bestTimesChart" data='{{ laptimes_json }}'></canvas>
+</div>-->
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js" integrity="sha384-zNy6FEbO50N+Cg5wap8IKA4M/ZnLJgzc6w2NqACZaK0u0FXfOWRRJOnQtpZun8ha" crossorigin="anonymous"></script>
+<!--<script src="/static/resultdetails.js"></script>-->
+{% endblock %}

@@ -23,3 +23,14 @@
   font-weight: bold;
   color: #d28800;
 }
+
+.result-card:hover {
+  background-color: #f9f9f9 !important;
+  transition: 0.1s;
+}
+
+.result-card:active {
+  background-color: #a8a8a8 !important;
+  color: white;
+  transition: 0.1s;
+}
