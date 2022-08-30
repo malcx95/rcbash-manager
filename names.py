@@ -52,6 +52,7 @@ NAMES = {
     58: "Stargatefour",
     60: "T-Eddie",
     62: "Blomberg",
+    63: "DanielV",
     64: "J_wohlfart",
     65: "Wohlfie",
     66: "RCR Norway",
