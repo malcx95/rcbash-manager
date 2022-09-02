@@ -366,7 +366,7 @@ def _calculate_points_from_finals(results, points):
                     current_points -= 2
 
 
-def _calculate_cup_points(database):
+def _calculate_cup_points(database) -> Tuple[Dict, Dict]:
     points_per_race = {"2WD": defaultdict(list), "4WD": defaultdict(list)}
     for race in RACE_ORDER:
         if _are_all_races_in_round_completed(database, race):
@@ -970,6 +970,11 @@ def show_current_points(verbose):
     print(text_message)
 
     print("^^ Copied to clipboard")
+
+
+def get_current_cup_points(date) -> Tuple[Dict, Dict]:
+    database = _get_database_with_date(date, convert_to_durations=True)
+    return _calculate_cup_points(database)
 
 
 def show_start_message():

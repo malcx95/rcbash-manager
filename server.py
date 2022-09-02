@@ -6,7 +6,7 @@ from racelogic.names import NAMES
 
 from flask import Flask, request
 from pathlib import Path
-    
+
 app = Flask(__name__)
 
 IS_PRODUCTION = Path("/home/malcolm/isproduction").exists()
@@ -31,9 +31,12 @@ def _render_page(active_index, selected_date):
     start_lists = []
     marshals = {}
     results = {}
+    points = {}
     if active_tab in (START_LISTS_TAB, RESULTS_TAB):
         start_lists, marshals = rc.get_all_start_lists(selected_date)
         results = rc.get_all_results(selected_date)
+    elif active_tab == POINTS_TAB:
+        points = rc.get_current_cup_points(selected_date)
 
     return flask.render_template(f"{active_tab}.html",
                                  tabs=TABS,
@@ -47,6 +50,7 @@ def _render_page(active_index, selected_date):
                                  names=NAMES,
                                  results=results,
                                  result_table_classes=RESULT_TABLE_CLASSES,
+                                 points=points,
                                  active_index=active_index)
 
 
@@ -131,7 +135,7 @@ def results(date):
 def results_details(date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{RESULTS_TAB}")
-    
+
     heat = request.args.get("heat")
     rcclass = request.args.get("rcclass")
     group = request.args.get("group")
