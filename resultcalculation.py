@@ -495,7 +495,7 @@ def _sort_by_points_and_best_heats(points):
         point_histogram = [0]*20
         for point in points:
             point_histogram[point-1] += 1
-        return tuple([sum(points)] + point_histogram)
+        return tuple([sum(points)] + list(reversed(point_histogram)))
 
     return sorted(points.items(), key=key_fn)
 
