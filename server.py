@@ -24,6 +24,14 @@ TABS = list(enumerate([
 ]))
 
 
+SHORTER_FINAL_NAMES = {
+    rc.EIGHTH_FINAL_NAME: "Åttondel",
+    rc.QUARTER_FINAL_NAME: "Kvart",
+    rc.SEMI_FINAL_NAME: "Semi",
+    rc.FINALS_NAME: "Final",
+}
+
+
 def _render_page(active_index, selected_date):
     db_dates = rc.get_all_dates()
     _, (active_tab, active_tab_readable, active_tab_icon) = TABS[active_index]
@@ -36,7 +44,13 @@ def _render_page(active_index, selected_date):
         start_lists, marshals = rc.get_all_start_lists(selected_date)
         results = rc.get_all_results(selected_date)
     elif active_tab == POINTS_TAB:
-        points = rc.get_current_cup_points(selected_date)
+        all_points, points_per_race = rc.get_current_cup_points(selected_date)
+        points = {
+            rcclass: _sort_points(all_points, points_per_race, rcclass)
+            for rcclass in ("2WD", "4WD")
+        }
+
+    race_order = [SHORTER_FINAL_NAMES[name] for name in rc.NON_QUALIFIER_RACE_ORDER]
 
     return flask.render_template(f"{active_tab}.html",
                                  tabs=TABS,
@@ -51,6 +65,7 @@ def _render_page(active_index, selected_date):
                                  results=results,
                                  result_table_classes=RESULT_TABLE_CLASSES,
                                  points=points,
+                                 race_order=race_order,
                                  active_index=active_index)
 
 
@@ -90,6 +105,15 @@ def _create_laptimes_json(results):
 
 def _is_valid_db_date(date):
     return date in rc.get_all_dates()
+
+
+def _sort_points(all_points, points_per_race, rcclass):
+    # TODO this is duplicated in textmessages, this should probably be refactored
+    return sorted([(num, all_points[num], _pad_list_with_nones(points_per_race[rcclass][num]))
+                   for num in points_per_race[rcclass]], key=lambda k: k[1], reverse=True)
+
+def _pad_list_with_nones(points_list):
+    return points_list + [None]*(len(rc.NON_QUALIFIER_RACE_ORDER) - len(points_list))
 
 
 # TODO remove
