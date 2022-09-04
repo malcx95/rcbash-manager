@@ -58,6 +58,13 @@ RACE_ORDER = [
     FINALS_NAME,
 ]
 
+NON_QUALIFIER_RACE_ORDER = [
+    EIGHTH_FINAL_NAME,
+    QUARTER_FINAL_NAME,
+    SEMI_FINAL_NAME,
+    FINALS_NAME,
+]
+
 CLASS_ORDER_DEFAULT = [
     ("2WD", "C"),
     ("2WD", "B"),
@@ -348,6 +355,8 @@ def _calculate_points_from_non_finals(results, points):
             for number in positions:
                 if _should_get_points(results[rcclass][group], number):
                     points[rcclass][number].append(current_points)
+                else:
+                    points[rcclass][number].append(0)
                 current_points -= 1
 
 

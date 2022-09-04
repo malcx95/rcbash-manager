@@ -1,15 +1,45 @@
 {% extends "dashboard.html" %}
 {% block tab_title %}Total poängställning{% endblock %}
 {% block content %}
-<link href="/static/results.css" rel="stylesheet">
+<link href="/static/points.css" rel="stylesheet">
 <!--<canvas class="my-4 w-100" id="myChart" width="900" height="380"></canvas>-->
-<div class="container">
+{% for rcclass, points_per_class in points.items() %}
   <div class="results-container rounded">
     <div class="justify-content-between flex-wrap flex-md-nowrap border-bottom align-items-center pt-3 pb-2 mb-3">
-      <h2 class="h2 heat-heading"><strong>HEJSAN</strong></h2>
+      <h2 class="h2 heat-heading"><strong>{{ rcclass }}</strong></h2>
     </div>
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover table-sm">
+        <thead>
+          <tr>
+            <th scope="col"></th>
+            <th scope="col">#</th>
+            <th scope="col">Namn</th>
+            {% for heat_name in race_order %}
+              <th scope="col">{{ heat_name }}</th>
+            {% endfor %}
+            <th scope="col">Totalt</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for num, driver_points, driver_points_per_race in points_per_class %}
+            <tr>
+              <td><b>{{ loop.index }}</b></td>
+              <td>{{ num }}</td>
+              <td>{{ names[num] }}</td>
+              {% for p in driver_points_per_race %}
+                {% if p is none %}
+                  <td></td>
+                {% else %}
+                  <td>{{ p }}</td>
+                {% endif %}
+              {% endfor %}
+              <td><strong>{{ driver_points }}</strong></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
-</div>
+{% endfor %}
 {% endblock %}

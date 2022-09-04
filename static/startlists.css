@@ -16,3 +16,7 @@
   background-color: #4a40c6;
   color: white;
 }
+
+.nowrap {
+  white-space: nowrap;
+}
