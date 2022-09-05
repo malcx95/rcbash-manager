@@ -10,6 +10,7 @@ try:
     import racelogic.htmlparsing
     import racelogic.textmessages
     import racelogic.util as util
+    import racelogic.db as db
 
 except ImportError:
     from names import NAMES
@@ -19,9 +20,9 @@ except ImportError:
     import htmlparsing
     import textmessages
     import util
+    import db
 
 import math
-import json
 import datetime
 import argparse
 import clipboard
@@ -30,11 +31,6 @@ import os
 
 # TODO make this a parameter
 MAX_NUM_PARTICIPANTS_PER_GROUP = 9
-
-RESULT_FOLDER_PATH = Path.home() / "RCBashResults"
-# this is necessary in production
-if Path("/home/malcolm/RCBashResults").exists():
-    RESULT_FOLDER_PATH = Path("/home/malcolm/RCBashResults")
 
 
 ALL_PARTICIPANTS_KEY = "all_participants"
@@ -91,8 +87,6 @@ CLASS_ORDER = {
     FINALS_NAME: CLASS_ORDER_FINALS,
 }
 
-DB_DATE_FORMAT = "%y%m%d"
-
 
 class DBResults:
 
@@ -134,60 +128,11 @@ def _input(text):
     return input(text)
 
 
-def _get_todays_filename():
-    todays_date = datetime.datetime.now()
-    todays_date_string = todays_date.strftime(DB_DATE_FORMAT)
-    return todays_date_string + ".json"
-
-
-def _get_database():
-    filename = _get_todays_filename()
-    database = None
-    with open(RESULT_FOLDER_PATH / filename) as f:
-        database = json.load(f)
-    return _replace_with_durations(database)
-
-
-def _get_database_with_date(date: str, convert_to_durations=False) -> Dict:
-    # yeah this may not be the best design, to convert back and forth...
-    db_date = datetime.datetime.strptime(date, "%Y-%m-%d").strftime(DB_DATE_FORMAT)
-    filename = f"{db_date}.json"
-    database = None
-    with open(RESULT_FOLDER_PATH / filename) as f:
-        database = json.load(f)
-    return _replace_with_durations(database) if convert_to_durations else database
-
-
-def _replace_with_durations(database):
-    if isinstance(database, dict):
-        if len(database) == 1 and "milliseconds" in database:
-            return Duration(database["milliseconds"])
-        else:
-            replaced = {}
-            for key, value in database.items():
-                new_key = key
-                if isinstance(key, str) and key.isnumeric():
-                    new_key = int(key)
-
-                replaced[new_key] = _replace_with_durations(value)
-            return replaced
-    elif isinstance(database, list):
-        return [_replace_with_durations(element) for element in database]
-    else:
-        return database
-
-
-def _save_database(database):
-    filename = _get_todays_filename()
-    with open(RESULT_FOLDER_PATH / filename, "w") as f:
-        json.dump(database, f, indent=2, default=lambda d: d.__dict__)
-
-
 def start_new_race_day():
-    RESULT_FOLDER_PATH.mkdir(exist_ok=True)
-    filename = _get_todays_filename()
+    db.RESULT_FOLDER_PATH.mkdir(exist_ok=True)
+    filename = db.get_todays_filename()
 
-    path = RESULT_FOLDER_PATH / filename
+    path = db.RESULT_FOLDER_PATH / filename
     database = {
         ALL_PARTICIPANTS_KEY: {},
         START_LISTS_KEY: {},
@@ -205,8 +150,7 @@ def start_new_race_day():
             elif ans == "n":
                 return False
 
-    with path.open("w") as f:
-        json.dump(database, f)
+    db.save_database(database)
 
     print(f"New race day created in {str(path)}!")
 
@@ -394,7 +338,7 @@ def create_qualifiers():
     if not started:
         return
 
-    database = _get_database()
+    database = db.get_database()
 
     participants = add_participants()
     all_participants = _get_all_participants(participants)
@@ -402,7 +346,7 @@ def create_qualifiers():
     database[ALL_PARTICIPANTS_KEY] = all_participants
     database[START_LISTS_KEY][QUALIFIERS_NAME] = participants
 
-    _save_database(database)
+    db.save_database(database)
 
 
 def _are_all_races_in_round_completed(database, race):
@@ -604,7 +548,7 @@ def _create_new_start_lists(groups, database):
 
 
 def start_new_race_round():
-    database = _get_database()
+    database = db.get_database()
     race = _get_current_heat(database)
     if not _are_all_races_in_round_completed(database, race):
         print("Can't start new round yet! Not all races are completed!")
@@ -631,7 +575,7 @@ def start_new_race_round():
         print(f"Warning: Driver(s) {', '.join(str(n) for n in duplicate_drivers)} may have been in the wrong heat.")
         if not _confirm_yes_no("Do you want to use these start lists anyway?"):
             return
-    _save_database(database)
+    db.save_database(database)
 
 
 def _add_dns_participants(race_entry, start_list):
@@ -681,7 +625,7 @@ def _read_results():
 
 
 def add_new_result(drivers_to_exclude=None):
-    database = _get_database()
+    database = db.get_database()
     parser = _read_results()
 
     total_times = htmlparsing.get_total_times(parser)
@@ -747,7 +691,7 @@ def add_new_result(drivers_to_exclude=None):
     if race == FINALS_NAME:
         _update_start_lists_for_finals(database)
 
-    _save_database(database)
+    db.save_database(database)
 
     results_text = textmessages.get_result_text_message(
         database[RESULTS_KEY][race][rcclass][group], rcclass, group, race)
@@ -760,7 +704,7 @@ def add_new_result(drivers_to_exclude=None):
 
 def add_new_result_manually():
     # FIXME this need to be reworked, too much is duplicated
-    database = _get_database()
+    database = db.get_database()
     race = _get_current_heat(database)
 
     race_options = [(rcclass, group)
@@ -829,7 +773,7 @@ def add_new_result_manually():
     if race == FINALS_NAME:
         _update_start_lists_for_finals(database)
 
-    _save_database(database)
+    db.save_database(database)
 
     results_text = textmessages.get_result_text_message(
         database[RESULTS_KEY][race][rcclass][group], rcclass, group, race)
@@ -860,7 +804,7 @@ def _get_latest_race_class_group(database):
 
 
 def show_latest_result(select=False):
-    database = _get_database()
+    database = db.get_database()
     if not select:
         race, rcclass, group = _get_latest_race_class_group(database)
     else:
@@ -885,7 +829,7 @@ def show_latest_result(select=False):
 
 
 def get_all_results(date: str) -> Dict[Tuple[str, str, str], DBResults]:
-    database = _get_database_with_date(date, convert_to_durations=True)
+    database = db.get_database_with_date(date, convert_to_durations=True)
     results = {(race, rcclass, group):
                DBResults(race, rcclass, group,
                          **database[RESULTS_KEY][race][rcclass][group])
@@ -896,7 +840,7 @@ def get_all_results(date: str) -> Dict[Tuple[str, str, str], DBResults]:
 
 
 def get_result(date: str, heat_name: str, rcclass: str, group: str) -> DBResults:
-    database = _get_database_with_date(date, convert_to_durations=True)
+    database = db.get_database_with_date(date, convert_to_durations=True)
     raw_results = database[RESULTS_KEY].get(heat_name, {}).get(rcclass, {}).get(group, None)
     if raw_results is None:
         return None
@@ -905,7 +849,7 @@ def get_result(date: str, heat_name: str, rcclass: str, group: str) -> DBResults
 
 def show_current_heat_start_list(database=None):
     if database is None:
-        database = _get_database()
+        database = db.get_database()
     race = _get_current_heat(database)
     heat_start_lists = database[START_LISTS_KEY][race]
 
@@ -922,7 +866,7 @@ def show_current_heat_start_list(database=None):
 
 
 def get_all_start_lists(date) -> Tuple[Iterable[Tuple[str, List]], Dict[str, Dict]]:
-    database = _get_database_with_date(date, convert_to_durations=False)
+    database = db.get_database_with_date(date, convert_to_durations=False)
     start_lists = []
     marshals = {}
     current_heat_index = database[CURRENT_HEAT_KEY]
@@ -970,7 +914,7 @@ def get_all_start_lists(date) -> Tuple[Iterable[Tuple[str, List]], Dict[str, Dic
 
 
 def show_current_points(verbose):
-    database = _get_database()
+    database = db.get_database()
     race = _get_current_heat(database)
     points, points_per_race = _calculate_cup_points(database)
 
@@ -982,12 +926,12 @@ def show_current_points(verbose):
 
 
 def get_current_cup_points(date) -> Tuple[Dict, Dict]:
-    database = _get_database_with_date(date, convert_to_durations=True)
+    database = db.get_database_with_date(date, convert_to_durations=True)
     return _calculate_cup_points(database)
 
 
 def show_start_message():
-    database = _get_database()
+    database = db.get_database()
     race, rcclass, group, class_order_index = _get_next_race(database)
 
     if race is None:
@@ -1003,16 +947,6 @@ def show_start_message():
     print(text_message)
 
     print("^^ Copied to clipboard")
-
-
-def get_all_dates() -> List[str]:
-    all_files = sorted(RESULT_FOLDER_PATH.glob("??????.json"), reverse=True)
-    names = []
-    for filename in all_files:
-        raw_date = filename.stem
-        date = datetime.datetime.strptime(raw_date, DB_DATE_FORMAT).strftime("%Y-%m-%d")
-        names.append(date)
-    return names
 
 
 def main():

@@ -1,4 +1,5 @@
 import resultcalculation
+import db
 import json
 import os
 import copy
@@ -20,9 +21,9 @@ class ResultCalculationTests(TestCase):
     def setUpClass(cls):
         cls.test_databases = {}
         database_files = os.listdir(TEST_DATABASE_PATH)
-        for db in database_files:
-            path = os.path.join(TEST_DATABASE_PATH, db)
-            name = db.split(".json")[0]
+        for database in database_files:
+            path = os.path.join(TEST_DATABASE_PATH, database)
+            name = database.split(".json")[0]
             with open(path) as f:
                 cls.test_databases[name] = json.load(f)
 
@@ -32,9 +33,9 @@ class ResultCalculationTests(TestCase):
             self.clipboard = obj
 
         resultcalculation.clipboard.copy = fake_clipboard_copy
-        self.setUpPyfakefs(modules_to_reload=[resultcalculation])
-        resultcalculation.RESULT_FOLDER_PATH = Path("test_rcbash_results")
-        resultcalculation.RESULT_FOLDER_PATH.mkdir(exist_ok=True)
+        self.setUpPyfakefs(modules_to_reload=[resultcalculation, db])
+        db.RESULT_FOLDER_PATH = Path("test_rcbash_results")
+        db.RESULT_FOLDER_PATH.mkdir(exist_ok=True)
 
     def tearDown(self):
         # TODO make this a parameter
@@ -62,7 +63,7 @@ class ResultCalculationTests(TestCase):
         database[ALL_PARTICIPANTS_KEY] = all_participants
         database[RESULTS_KEY] = results
         database[CURRENT_HEAT_KEY] = current_heat
-        resultcalculation._save_database(database)
+        db.save_database(database)
 
     def _assert_correct_results_added(self, expected, actual):
         for heat, results in expected.items():
@@ -125,7 +126,7 @@ class ResultCalculationTests(TestCase):
         ]
         self.setup_fake_input(participants_entered)
         resultcalculation.create_qualifiers()
-        database = resultcalculation._get_database()
+        database = db.get_database()
 
         expected_all_participants = {90, 89, 11, 12, 27, 29, 21, 22, 26, 35, 49, 51, 67, 68, 36}
         expected_start_lists = {
@@ -284,7 +285,7 @@ class ResultCalculationTests(TestCase):
             with self.subTest(description):
 
                 resultcalculation.add_new_result()
-                database = resultcalculation._get_database()
+                database = db.get_database()
                 self._assert_correct_results_added(expected_results, database[RESULTS_KEY])
                 self.assertDictEqual(database[START_LISTS_KEY], initial_start_lists,
                                      "Start lists were changed!")
@@ -292,7 +293,7 @@ class ResultCalculationTests(TestCase):
 
     def test_start_new_race_round_qualifiers_normal(self):
         database = self.test_databases["test_start_new_race_round_qualifiers_normal"]
-        resultcalculation._save_database(database)
+        db.save_database(database)
         self.setup_fake_input(["y"])
 
         resultcalculation.start_new_race_round()
@@ -308,14 +309,14 @@ class ResultCalculationTests(TestCase):
                 "C": [83, 46, 60, 64]
             }
         }
-        new_database = resultcalculation._get_database()
+        new_database = db.get_database()
         self.assertDictEqual(new_database[START_LISTS_KEY][EIGHTH_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made from qualifiers!")
 
     def test_start_new_race_round_qualifiers_dns(self):
         database = self.test_databases["test_start_new_race_round_qualifiers_dns"]
-        resultcalculation._save_database(database)
+        db.save_database(database)
         self.setup_fake_input(["y"])
 
         resultcalculation.start_new_race_round()
@@ -331,14 +332,14 @@ class ResultCalculationTests(TestCase):
                 "C": [46, 11, 64, 60]
             }
         }
-        new_database = resultcalculation._get_database()
+        new_database = db.get_database()
         self.assertDictEqual(new_database[START_LISTS_KEY][EIGHTH_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made from qualifiers!")
 
     def test_start_new_race_round_qualifiers_merge_groups(self):
         database = self.test_databases["test_start_new_race_round_qualifiers_normal"]
-        resultcalculation._save_database(database)
+        db.save_database(database)
         self.setup_fake_input([
             "n",  # don't use current groups
             "A",  # merge all 2WD to A
@@ -357,14 +358,14 @@ class ResultCalculationTests(TestCase):
                 "B": [82, 39, 67, 83, 46, 60, 64],
             }
         }
-        new_database = resultcalculation._get_database()
+        new_database = db.get_database()
         self.assertDictEqual(new_database[START_LISTS_KEY][EIGHTH_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made from qualifiers!")
 
     def test_start_new_race_round_qualifiers_merge_groups_dns(self):
         database = self.test_databases["test_start_new_race_round_qualifiers_dns"]
-        resultcalculation._save_database(database)
+        db.save_database(database)
         self.setup_fake_input([
             "n",  # don't use current groups
             "A",  # merge all 2WD to A
@@ -383,14 +384,14 @@ class ResultCalculationTests(TestCase):
                 "B": [39, 67, 83, 46, 11, 64, 60],
             }
         }
-        new_database = resultcalculation._get_database()
+        new_database = db.get_database()
         self.assertDictEqual(new_database[START_LISTS_KEY][EIGHTH_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made from qualifiers!")
 
     def test_start_new_race_round_finals_normal(self):
         database = self.test_databases["test_start_new_race_round_finals_normal"]
-        resultcalculation._save_database(database)
+        db.save_database(database)
         # self.setup_fake_input(["y"])
 
         # TODO make this a parameter
@@ -410,7 +411,7 @@ class ResultCalculationTests(TestCase):
                 "C": [67, 83, 60, 64]
             }
         }
-        new_database = resultcalculation._get_database()
+        new_database = db.get_database()
         self.assertDictEqual(new_database[START_LISTS_KEY][FINALS_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made for finals!")
@@ -421,7 +422,7 @@ class ResultCalculationTests(TestCase):
         # TODO make this a parameter
         resultcalculation.MAX_NUM_PARTICIPANTS_PER_GROUP = 9
 
-        resultcalculation._save_database(database)
+        db.save_database(database)
 
         resultcalculation.start_new_race_round()
 
@@ -435,14 +436,14 @@ class ResultCalculationTests(TestCase):
                 "B": [89, 82, 67, 83, 60, 64],
             }
         }
-        new_database = resultcalculation._get_database()
+        new_database = db.get_database()
         self.assertDictEqual(new_database[START_LISTS_KEY][FINALS_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made for finals!")
 
     def test_start_new_race_round_intermediate_normal(self):
         database = self.test_databases["test_start_new_race_round_intermediate_normal"]
-        resultcalculation._save_database(database)
+        db.save_database(database)
 
         resultcalculation.start_new_race_round()
 
@@ -457,7 +458,7 @@ class ResultCalculationTests(TestCase):
                 "C": [67, 82, 64, 83]
             }
         }
-        new_database = resultcalculation._get_database()
+        new_database = db.get_database()
         self.assertDictEqual(new_database[START_LISTS_KEY][QUARTER_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made for eight finals!")
@@ -465,7 +466,7 @@ class ResultCalculationTests(TestCase):
 
     def test_start_new_race_round_intermediate_only_A_heat(self):
         database = self.test_databases["test_start_new_race_round_intermediate_one_heat"]
-        resultcalculation._save_database(database)
+        db.save_database(database)
 
         resultcalculation.start_new_race_round()
 
@@ -479,7 +480,7 @@ class ResultCalculationTests(TestCase):
                 "C": [67, 82, 64, 83]
             }
         }
-        new_database = resultcalculation._get_database()
+        new_database = db.get_database()
         self.assertDictEqual(new_database[START_LISTS_KEY][QUARTER_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made for eight finals!")
@@ -487,8 +488,8 @@ class ResultCalculationTests(TestCase):
 
     def test_calculate_cup_points(self):
         database = self.test_databases["test_calculate_cup_points"]
-        resultcalculation._save_database(database)
-        database = resultcalculation._get_database()
+        db.save_database(database)
+        database = db.get_database()
 
         points, points_per_race = resultcalculation._calculate_cup_points(database)
 
@@ -536,8 +537,8 @@ class ResultCalculationTests(TestCase):
                 90: [17, 18, 17, 34],
                 45: [13, 19, 16, 22],
                 36: [19, 16, 14, 36],
-                77: [    13, 15, 30],
-                89: [    11, 10, 26],
+                77: [0,  13, 15, 30],
+                89: [0,  11, 10, 26],
                 46: [12, 12, 12, 28],
                 82: [14, 20, 19, 38],
                 21: [20, 17, 18, 32],
