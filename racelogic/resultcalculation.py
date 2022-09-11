@@ -32,12 +32,6 @@ import os
 # TODO make this a parameter
 MAX_NUM_PARTICIPANTS_PER_GROUP = 9
 
-
-ALL_PARTICIPANTS_KEY = "all_participants"
-START_LISTS_KEY = "start_lists"
-RESULTS_KEY = "results"
-CURRENT_HEAT_KEY = "current_heat"
-
 MANUALLY_ENTERED_LAPS_DRIVEN = -1
 
 QUALIFIERS_NAME = "Kval"
@@ -86,42 +80,6 @@ CLASS_ORDER = {
     SEMI_FINAL_NAME: CLASS_ORDER_DEFAULT,
     FINALS_NAME: CLASS_ORDER_FINALS,
 }
-
-
-class DBResults:
-
-    def __init__(self,
-                 heat_name,
-                 rcclass,
-                 group,
-                 *,
-                 positions: List[int],
-                 num_laps_driven: Dict[int, int],
-                 total_times: Dict[int, Duration],
-                 best_laptimes: List[Tuple[int, Duration]],
-                 average_laptimes: List[Tuple[int, Duration]],
-                 **kwargs):
-        self.heat_name = heat_name
-        self.rcclass = rcclass
-        self.group = group
-        self.positions = positions
-        self.num_laps_driven = num_laps_driven
-        self.total_times = total_times
-        self.best_laptimes = best_laptimes
-        self.average_laptimes = average_laptimes
-        self.very_best_laptime = best_laptimes[0][1]
-
-    def best_laptimes_dict(self):
-        return {num: time for num, time in self.best_laptimes}
-
-    def average_laptimes_dict(self):
-        return {num: time for num, time in self.average_laptimes}
-
-    def has_best_laptime(self, num):
-        laptimes_dict = self.best_laptimes_dict()
-        if num not in laptimes_dict:
-            return False
-        return self.best_laptimes[0][1] == laptimes_dict[num]
 
 
 def _input(text):
@@ -237,7 +195,7 @@ def _get_all_participants(participants):
     return all_participants
 
 
-def add_participants():
+def add_participants() -> Dict[str, Dict[str, List]]:
     participants = {"2WD": defaultdict(list), "4WD": defaultdict(list)}
 
     classes = ["2WD", "4WD"]
@@ -343,9 +301,10 @@ def create_qualifiers():
     participants = add_participants()
     all_participants = _get_all_participants(participants)
 
-    database[ALL_PARTICIPANTS_KEY] = all_participants
-    database[START_LISTS_KEY][QUALIFIERS_NAME] = participants
+    database.set_all_participants(all_participants)
+    database.set_first_qualifiers(participants)
 
+    # TODO du är här
     db.save_database(database)
 
 
@@ -826,25 +785,6 @@ def show_latest_result(select=False):
     print(results_text)
 
     print("^^ Copied to clipboard")
-
-
-def get_all_results(date: str) -> Dict[Tuple[str, str, str], DBResults]:
-    database = db.get_database_with_date(date, convert_to_durations=True)
-    results = {(race, rcclass, group):
-               DBResults(race, rcclass, group,
-                         **database[RESULTS_KEY][race][rcclass][group])
-               for race in database[RESULTS_KEY]
-               for rcclass in ("2WD", "4WD")
-               for group in database[RESULTS_KEY][race][rcclass]}
-    return results
-
-
-def get_result(date: str, heat_name: str, rcclass: str, group: str) -> DBResults:
-    database = db.get_database_with_date(date, convert_to_durations=True)
-    raw_results = database[RESULTS_KEY].get(heat_name, {}).get(rcclass, {}).get(group, None)
-    if raw_results is None:
-        return None
-    return DBResults(heat_name, rcclass, group, **raw_results)
 
 
 def show_current_heat_start_list(database=None):
