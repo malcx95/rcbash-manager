@@ -1,6 +1,7 @@
 from html.parser import HTMLParser
 from functools import reduce
 from collections import defaultdict
+from typing import List, Tuple, Dict
 
 try:
     from racelogic.duration import Duration
@@ -43,7 +44,8 @@ class RCMHtmlParser(HTMLParser):
             if number_name not in self.result:
                 self.result[number_name] = []
 
-    def _is_start_of_table(self, tag, attrs):
+    @staticmethod
+    def _is_start_of_table(tag, attrs):
         return tag == "tr" and attrs == [("valign", "top")]
 
     def _there_are_tables_after_this(self, tag, attrs):
@@ -69,10 +71,12 @@ class RCMHtmlParser(HTMLParser):
         elif self._is_useful_table_data(tag, attrs):
             self._parsing_data = True
 
-    def _is_start_of_laptime_row(self, data):
+    @staticmethod
+    def _is_start_of_laptime_row(data):
         return data.strip().isdigit()
 
-    def _is_laptime_empty_due_to_time_being_bold(self, data):
+    @staticmethod
+    def _is_laptime_empty_due_to_time_being_bold(data):
         # When the current lap time is the best time, the document puts the time
         # in <b>-tags, but not the '(0)' part. Since I'm not sure if '(0)' always
         # is present, I think it's safer to check whether there is an actual laptime
@@ -155,21 +159,21 @@ class RCMHtmlParser(HTMLParser):
                 self.result_header.append((int(number), name))
 
 
-def get_total_times(parser):
+def get_total_times(parser) -> Dict[int, Duration]:
     return {int(number): reduce(lambda a, b: a + b, laptimes, Duration(0))
             for (number, _), laptimes in parser.result.items()}
 
 
-def get_race_participants(parser):
+def get_race_participants(parser) -> List[int]:
     return [int(number) for number, _ in parser.result]
 
 
-def get_num_laps_driven(parser):
+def get_num_laps_driven(parser) -> Dict[int, int]:
     return {int(number): max(0, len(laptimes) - 1)
             for (number, _), laptimes in parser.result.items()}
 
 
-def get_positions(total_times, num_laps_driven):
+def get_positions(total_times, num_laps_driven) -> List[int]:
     orderings = []
     for number, num_laps_driven in num_laps_driven.items():
         orderings.append((int(number), num_laps_driven, total_times[number]))
@@ -179,13 +183,13 @@ def get_positions(total_times, num_laps_driven):
     return [number for number, _, _ in orderings_sorted]
 
 
-def get_best_laptimes(parser):
+def get_best_laptimes(parser) -> List[Tuple[int, Duration]]:
     best_times = [(int(number), min(laptimes[1:], key=lambda lt: lt.milliseconds))
                   for (number, _), laptimes in parser.result.items() if len(laptimes) > 1]
     return sorted(best_times, key=lambda k: k[1])
 
 
-def get_average_laptimes(total_times, num_laps_driven):
+def get_average_laptimes(total_times, num_laps_driven) -> List[Tuple[int, Duration]]:
     average_laptimes = []
     for number, total_time in total_times.items():
         laps_driven = num_laps_driven[number]

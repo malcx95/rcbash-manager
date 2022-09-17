@@ -3,7 +3,7 @@ import db
 import json
 import os
 import copy
-from resultcalculation import QUALIFIERS_NAME, START_LISTS_KEY, RESULTS_KEY, \
+from db import QUALIFIERS_NAME, START_LISTS_KEY, RESULTS_KEY, \
     CURRENT_HEAT_KEY, ALL_PARTICIPANTS_KEY, EIGHTH_FINAL_NAME, QUARTER_FINAL_NAME, FINALS_NAME, CURRENT_HEAT_KEY
 import htmlparsing
 from duration import Duration
