@@ -2,7 +2,8 @@ import os
 import time
 
 
-DRIVE_MOUNT_LOCATION = "/mnt/KingstonDrive/"
+#DRIVE_MOUNT_LOCATION = "/mnt/KingstonDrive/"
+DRIVE_MOUNT_LOCATION = "/media/malcolm/B1C5-B1C4/"
 
 
 def find_and_read_latest_html_file():

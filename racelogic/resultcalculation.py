@@ -1,10 +1,10 @@
-from pathlib import Path
 from collections import defaultdict
-from typing import List, Dict, Tuple, Iterable
+from typing import List, Dict, Tuple, Iterable, Callable, Any
 
 try:
     from racelogic.names import NAMES
     from racelogic.duration import Duration
+    from racelogic.db import RACE_ORDER, CLASS_ORDER
 
     import racelogic.filelocation
     import racelogic.htmlparsing
@@ -15,6 +15,7 @@ try:
 except ImportError:
     from names import NAMES
     from duration import Duration
+    from db import RACE_ORDER, CLASS_ORDER
 
     import filelocation
     import htmlparsing
@@ -23,63 +24,14 @@ except ImportError:
     import db
 
 import math
-import datetime
 import argparse
 import clipboard
 import copy
-import os
 
 # TODO make this a parameter
 MAX_NUM_PARTICIPANTS_PER_GROUP = 9
 
 MANUALLY_ENTERED_LAPS_DRIVEN = -1
-
-QUALIFIERS_NAME = "Kval"
-EIGHTH_FINAL_NAME = "Åttondelsfinal"
-QUARTER_FINAL_NAME = "Kvartsfinal"
-SEMI_FINAL_NAME = "Semifinal"
-FINALS_NAME = "Final"
-
-RACE_ORDER = [
-    QUALIFIERS_NAME,
-    EIGHTH_FINAL_NAME,
-    QUARTER_FINAL_NAME,
-    SEMI_FINAL_NAME,
-    FINALS_NAME,
-]
-
-NON_QUALIFIER_RACE_ORDER = [
-    EIGHTH_FINAL_NAME,
-    QUARTER_FINAL_NAME,
-    SEMI_FINAL_NAME,
-    FINALS_NAME,
-]
-
-CLASS_ORDER_DEFAULT = [
-    ("2WD", "C"),
-    ("2WD", "B"),
-    ("2WD", "A"),
-    ("4WD", "C"),
-    ("4WD", "B"),
-    ("4WD", "A")
-]
-
-CLASS_ORDER_FINALS = [
-    ("2WD", "C"),
-    ("4WD", "C"),
-    ("2WD", "B"),
-    ("4WD", "B"),
-    ("2WD", "A"),
-    ("4WD", "A")
-]
-
-CLASS_ORDER = {
-    QUALIFIERS_NAME: CLASS_ORDER_DEFAULT,
-    EIGHTH_FINAL_NAME: CLASS_ORDER_DEFAULT,
-    QUARTER_FINAL_NAME: CLASS_ORDER_DEFAULT,
-    SEMI_FINAL_NAME: CLASS_ORDER_DEFAULT,
-    FINALS_NAME: CLASS_ORDER_FINALS,
-}
 
 
 def _input(text):
@@ -87,18 +39,9 @@ def _input(text):
 
 
 def start_new_race_day():
-    db.RESULT_FOLDER_PATH.mkdir(exist_ok=True)
-    filename = db.get_todays_filename()
+    db_exists_already = db.init_db_path()
 
-    path = db.RESULT_FOLDER_PATH / filename
-    database = {
-        ALL_PARTICIPANTS_KEY: {},
-        START_LISTS_KEY: {},
-        RESULTS_KEY: {},
-        CURRENT_HEAT_KEY: 0
-    }
-
-    if path.exists():
+    if db_exists_already:
         print("There is already an ongoing race day for today!")
         answered = False
         while not answered:
@@ -108,9 +51,10 @@ def start_new_race_day():
             elif ans == "n":
                 return False
 
-    db.save_database(database)
+    database = db.create_empty_database()
+    database.save()
 
-    print(f"New race day created in {str(path)}!")
+    print("New race day created for today!")
 
     return True
 
@@ -222,26 +166,6 @@ def add_participants() -> Dict[str, Dict[str, List]]:
     return filtered_participants
 
 
-def _get_current_heat(database):
-    return RACE_ORDER[database[CURRENT_HEAT_KEY]]
-
-def _get_previous_heat(database):
-    return RACE_ORDER[database[CURRENT_HEAT_KEY] - 1]
-
-
-def _find_relevant_race(race_participants, database):
-    race = _get_current_heat(database)
-    largest_match_size = 0
-    largest_match_group = (None, None, None, None)
-    for rcclass in database[START_LISTS_KEY][race]:
-        for group, start_list in database[START_LISTS_KEY][race][rcclass].items():
-            intersection_size = len(set(race_participants).intersection(set(start_list)))
-            if intersection_size > largest_match_size:
-                largest_match_size = intersection_size
-                largest_match_group = (race, rcclass, group, start_list)
-    return largest_match_group
-
-
 def _should_get_points(group_results, number):
     if "dns" in group_results and number in group_results["dns"]:
         return False
@@ -304,8 +228,7 @@ def create_qualifiers():
     database.set_all_participants(all_participants)
     database.set_first_qualifiers(participants)
 
-    # TODO du är här
-    db.save_database(database)
+    database.save()
 
 
 def _are_all_races_in_round_completed(database, race):
@@ -322,7 +245,7 @@ def _are_all_races_in_round_completed(database, race):
 
 
 def _get_current_groups(database):
-    race = _get_current_heat(database)
+    race = database.get_current_heat()
     return {
         "2WD": list(database[START_LISTS_KEY][race]["2WD"].keys()),
         "4WD": list(database[START_LISTS_KEY][race]["4WD"].keys()),
@@ -345,7 +268,7 @@ def _enter_new_groups():
     return groups
 
 
-def _select_from_list(options, message, element_format_fn=str):
+def _select_from_list(options: List[Any], message: str, element_format_fn: Callable[[Any], str] = str) -> Any:
     print(message)
     for i, option in enumerate(options):
         print(f"{i + 1}. {element_format_fn(option)}")
@@ -497,7 +420,7 @@ def _create_start_lists_for_finals(database):
 
 
 def _create_new_start_lists(groups, database):
-    race = _get_current_heat(database)
+    race = database.get_current_heat()
     if race == QUALIFIERS_NAME:
         return _create_start_list_from_qualifiers(groups, database)
     elif race in (EIGHTH_FINAL_NAME, QUARTER_FINAL_NAME):
@@ -508,14 +431,14 @@ def _create_new_start_lists(groups, database):
 
 def start_new_race_round():
     database = db.get_database()
-    race = _get_current_heat(database)
+    race = database.get_current_heat()
     if not _are_all_races_in_round_completed(database, race):
         print("Can't start new round yet! Not all races are completed!")
         return
 
     groups = _get_current_groups(database)
 
-    if _get_current_heat(database) == QUALIFIERS_NAME:
+    if database.get_current_heat() == QUALIFIERS_NAME:
         print(f"Current groups are 2WD {', '.join(groups['2WD'])} and 4WD {', '.join(groups['4WD'])}")
         while not _confirm_yes_no("Do you want to use these groups?"):
             groups = _enter_new_groups()
@@ -537,35 +460,8 @@ def start_new_race_round():
     db.save_database(database)
 
 
-def _add_dns_participants(race_entry, start_list):
-    positions = race_entry["positions"]
-    not_started_participants = set(start_list) - set(positions)
-    if not_started_participants:
-        for number in not_started_participants:
-            race_entry["positions"].append(number)
-            if "dns" not in race_entry:
-                race_entry["dns"] = []
-
-            race_entry["dns"].append(number)
-
-
-
-def _update_start_lists_for_finals(database):
-    for rcclass in ("2WD", "4WD"):
-        class_results = database[RESULTS_KEY][FINALS_NAME][rcclass]
-        groups = ("C", "B", "A")
-        for i in range(len(groups) - 1):
-            group = groups[i]
-            if group in class_results:
-                group_winner = class_results[group]["positions"][0]
-                higher_group = groups[i + 1]
-                higher_group_start_list = database[START_LISTS_KEY][FINALS_NAME][rcclass][higher_group]
-                if group_winner not in higher_group_start_list:
-                    higher_group_start_list.append(group_winner)
-
-
 def _get_next_race(database):
-    race = _get_current_heat(database)
+    race = database.get_current_heat()
     heat_start_lists = database[START_LISTS_KEY][race]
     current_results = database[RESULTS_KEY].get(race)
     for class_order_index, (rcclass, group) in enumerate(CLASS_ORDER[race]):
@@ -593,8 +489,8 @@ def add_new_result(drivers_to_exclude=None):
     best_laptimes = htmlparsing.get_best_laptimes(parser)
     average_laptimes = htmlparsing.get_average_laptimes(total_times, num_laps_driven)
 
-    race_participants = htmlparsing.get_race_participants(parser)
-    race, rcclass, group, start_list = _find_relevant_race(race_participants, database)
+    race_participants = db.number_list_to_driver_list(htmlparsing.get_race_participants(parser))
+    race, rcclass, group, start_list = database.find_relevant_race(race_participants)
 
     extra_participants = set(race_participants) - set(start_list)
     if extra_participants:
@@ -606,14 +502,13 @@ def add_new_result(drivers_to_exclude=None):
                 drivers_to_exclude.append(driver)
 
     if drivers_to_exclude:
-        for num in drivers_to_exclude:
-            del total_times[num]
-            del num_laps_driven[num]
-            positions.remove(num)
+        for driver in drivers_to_exclude:
+            del total_times[driver.number]
+            del num_laps_driven[driver.number]
+            positions.remove(driver.number)
             # FIXME this doesn't work in manual mode
-            best_laptimes = [(n, time) for n, time in best_laptimes if n != num]
-            average_laptimes = [(n, time) for n, time in average_laptimes if n != num]
-
+            best_laptimes = [(n, time) for n, time in best_laptimes if n != driver.number]
+            average_laptimes = [(n, time) for n, time in average_laptimes if n != driver.number]
 
     if race is None:
         print("Couldn't match the latest result with any race!")
@@ -625,35 +520,23 @@ def add_new_result(drivers_to_exclude=None):
         print("Please manually enter the result using the --manual flag")
         return
 
-    if race not in database[RESULTS_KEY]:
-        database[RESULTS_KEY][race] = {"2WD": {}, "4WD": {}}
-
-    if group in database[RESULTS_KEY][race][rcclass]:
+    if database.result_exists(race, rcclass, group):
         print("This race already has a previous result, which will be overwritten.")
         if not _confirm_yes_no():
             return
-        elif race == FINALS_NAME:
+        elif race == db.FINALS_NAME:
             print("Please manually remove the old winner from the next start list before doing so!")
             if not _confirm_yes_no("Have you done that?"):
                 return
 
-    database[RESULTS_KEY][race][rcclass][group] = {}
-    database[RESULTS_KEY][race][rcclass][group]["positions"] = positions
-    database[RESULTS_KEY][race][rcclass][group]["num_laps_driven"] = num_laps_driven
-    database[RESULTS_KEY][race][rcclass][group]["total_times"] = total_times
-    database[RESULTS_KEY][race][rcclass][group]["best_laptimes"] = best_laptimes
-    database[RESULTS_KEY][race][rcclass][group]["average_laptimes"] = average_laptimes
-    database[RESULTS_KEY][race][rcclass][group]["manual"] = False
+    database.add_result(race, rcclass, group,
+                        positions, num_laps_driven, total_times,
+                        best_laptimes, average_laptimes, False, start_list)
 
-    _add_dns_participants(database[RESULTS_KEY][race][rcclass][group], start_list)
+    database.save()
 
-    if race == FINALS_NAME:
-        _update_start_lists_for_finals(database)
-
-    db.save_database(database)
-
-    results_text = textmessages.get_result_text_message(
-        database[RESULTS_KEY][race][rcclass][group], rcclass, group, race)
+    results_text = textmessages.get_result_text_message(database.get_result(race, rcclass, group),
+                                                        rcclass, group, race)
 
     clipboard.copy(results_text)
     print(results_text)
@@ -664,21 +547,18 @@ def add_new_result(drivers_to_exclude=None):
 def add_new_result_manually():
     # FIXME this need to be reworked, too much is duplicated
     database = db.get_database()
-    race = _get_current_heat(database)
+    race = database.get_current_heat()
 
     race_options = [(rcclass, group)
-                    for rcclass in ("2WD", "4WD") for group in database[START_LISTS_KEY][race][rcclass]]
+                    for rcclass in ("2WD", "4WD") for group in database.get_groups_in_race(race, rcclass)]
     rcclass, group = _select_from_list(
         race_options, "Select which race to enter manually.", lambda e: " ".join(e))
 
-    if race not in database[RESULTS_KEY]:
-        database[RESULTS_KEY][race] = {"2WD": {}, "4WD": {}}
-
-    if group in database[RESULTS_KEY][race][rcclass]:
+    if database.result_exists(race, rcclass, group):
         print("This race already has a previous result, which will be overwritten.")
         if not _confirm_yes_no():
             return
-        elif race == FINALS_NAME:
+        elif race == db.FINALS_NAME:
             print("Please manually remove the old winner from the next start list before doing so!")
             if not _confirm_yes_no("Have you done that?"):
                 return
@@ -693,7 +573,7 @@ def add_new_result_manually():
 
     num_laps_driven = {}
     total_times = {}
-    if race == QUALIFIERS_NAME:
+    if race == db.QUALIFIERS_NAME:
         for number in positions:
             num_laps = _enter_num_laps(number)
             total_time = _enter_total_time(number)
@@ -701,8 +581,8 @@ def add_new_result_manually():
             num_laps_driven[number] = num_laps
             total_times[number] = total_time
 
-    race_participants = positions
-    race, rcclass, group, start_list = _find_relevant_race(race_participants, database)
+    race_participants = db.number_list_to_driver_list(positions)
+    race, rcclass, group, start_list = database.find_relevant_race(race_participants)
 
     drivers_to_exclude = []
     extra_participants = set(race_participants) - set(start_list)
@@ -712,30 +592,20 @@ def add_new_result_manually():
             for driver in extra_participants:
                 drivers_to_exclude.append(driver)
 
-    for num in drivers_to_exclude:
+    for driver in drivers_to_exclude:
         if total_times:
-            del total_times[num]
-            del num_laps_driven[num]
-        positions.remove(num)
+            del total_times[driver.number]
+            del num_laps_driven[driver.number]
+        positions.remove(driver.number)
 
-    database[RESULTS_KEY][race][rcclass][group] = {}
-    database[RESULTS_KEY][race][rcclass][group]["positions"] = positions
-    database[RESULTS_KEY][race][rcclass][group]["num_laps_driven"] = num_laps_driven
-    database[RESULTS_KEY][race][rcclass][group]["total_times"] = total_times
-    database[RESULTS_KEY][race][rcclass][group]["best_laptimes"] = []
-    database[RESULTS_KEY][race][rcclass][group]["average_laptimes"] = []
-    database[RESULTS_KEY][race][rcclass][group]["manual"] = True
+    database.add_result(race, rcclass, group,
+                        positions, num_laps_driven, total_times,
+                        [], [], True, start_list)
 
-    _add_dns_participants(
-        database[RESULTS_KEY][race][rcclass][group], database[START_LISTS_KEY][race][rcclass][group])
+    database.save()
 
-    if race == FINALS_NAME:
-        _update_start_lists_for_finals(database)
-
-    db.save_database(database)
-
-    results_text = textmessages.get_result_text_message(
-        database[RESULTS_KEY][race][rcclass][group], rcclass, group, race)
+    results_text = textmessages.get_result_text_message(database.get_result(race, rcclass, group),
+                                                        rcclass, group, race)
 
     clipboard.copy(results_text)
     print(results_text)
@@ -744,12 +614,12 @@ def add_new_result_manually():
 
 
 def _get_latest_race_class_group(database):
-    race = _get_current_heat(database)
+    race = database.get_current_heat()
     class_order = CLASS_ORDER[race]
     results = database[RESULTS_KEY]
     heat_results = results.get(race)
     if heat_results is None:
-        previous_heat = _get_previous_heat(database)
+        previous_heat = database.get_previous_heat()
         heat_results = database.get(previous_heat)
         if heat_results is None:
             return None, None, None
@@ -790,7 +660,7 @@ def show_latest_result(select=False):
 def show_current_heat_start_list(database=None):
     if database is None:
         database = db.get_database()
-    race = _get_current_heat(database)
+    race = database.get_current_heat()
     heat_start_lists = database[START_LISTS_KEY][race]
 
     text_message = textmessages.create_heat_start_list_text_message(
@@ -855,7 +725,7 @@ def get_all_start_lists(date) -> Tuple[Iterable[Tuple[str, List]], Dict[str, Dic
 
 def show_current_points(verbose):
     database = db.get_database()
-    race = _get_current_heat(database)
+    race = database.get_current_heat()
     points, points_per_race = _calculate_cup_points(database)
 
     text_message = textmessages.create_points_list_text_message(points, points_per_race, race, verbose)

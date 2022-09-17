@@ -32,7 +32,6 @@ class DBTests(TestCase):
                 database = db.Database(db._replace_with_durations(test_db_json))
                 database._write_database(db_name + ".json")
                 
-                saved_db = {}
                 with open(db.RESULT_FOLDER_PATH / (db_name + ".json")) as f:
                     saved_db = json.load(f)
 
