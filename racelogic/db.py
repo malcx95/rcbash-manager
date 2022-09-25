@@ -94,11 +94,14 @@ class HeatStartLists:
         self._start_lists: Dict[str, List[Driver]] = \
             self._parse_json_dict(json_dict)
 
-    def get_start_list(self, group: str):
+    def get_start_list(self, group: str) -> List[Driver]:
         return self._start_lists[group]
 
     def get_groups(self) -> List[str]:
         return list(self._start_lists.keys())
+
+    def has_group(self, group: str) -> bool:
+        return group in self._start_lists
 
     def get_serializable(self, group) -> List:
         return [d.number for d in self._start_lists[group]]
@@ -106,9 +109,10 @@ class HeatStartLists:
     def get_start_lists(self) -> Iterable[Tuple[str, List[Driver]]]:
         return ((group, start_list) for group, start_list in self._start_lists.items())
 
-    def _parse_json_dict(self, json_dict: Dict) -> Dict:
+    @staticmethod
+    def _parse_json_dict(json_dict: Dict) -> Dict:
         return {
-            group: number_list_to_driver_list(start_list)
+            group: number_list_to_driver_list(start_list) if isinstance(start_list[0], int) else start_list
             for group, start_list in json_dict.items()
         }
 
@@ -166,16 +170,22 @@ class RaceResults:
             return False
         return self.best_laptimes[0][1] == laptimes_dict[num]
 
-    def get_serializable(self) -> Dict:
+    def get_serializable(self, convert_from_durations=True) -> Dict:
+        def maybe_to_millis_dict(duration: Duration) -> Any:
+            if convert_from_durations:
+                return {"milliseconds": duration.milliseconds}
+            else:
+                return duration
+
         results_json = {
             "positions": [d.number for d in self.positions],
             "num_laps_driven": {d.number: num_laps
                                 for d, num_laps in self.num_laps_driven.items()},
-            "total_times": {d.number: {"milliseconds": duration.milliseconds}
+            "total_times": {d.number: maybe_to_millis_dict(duration)
                             for d, duration in self.total_times.items()},
-            "best_laptimes": [(d.number, {"milliseconds": duration.milliseconds})
+            "best_laptimes": [[d.number, maybe_to_millis_dict(duration)]
                               for d, duration in self.best_laptimes],
-            "average_laptimes": [(d.number, {"milliseconds": duration.milliseconds})
+            "average_laptimes": [[d.number, maybe_to_millis_dict(duration)]
                                  for d, duration in self.average_laptimes],
             "manual": self.manual
         }
@@ -275,16 +285,99 @@ class Database:
     def get_groups_in_race(self, heat_name: str, rcclass: str) -> List[str]:
         return self.start_lists[heat_name][rcclass].get_groups()
 
+    def get_current_groups(self) -> Dict[str, List[str]]:
+        """
+        Gets the groups in the current heat by class.
+        Returns a dictionary where each class is mapped to a list of the groups.
+        """
+        current_heat = self.get_current_heat()
+        return {
+            "2WD": self.start_lists[current_heat]["2WD"].get_groups(),
+            "4WD": self.start_lists[current_heat]["4WD"].get_groups(),
+        }
+
+    def get_start_lists_for_heat(self, heat_name: str) -> Dict[str, HeatStartLists]:
+        """
+        Gets the start lists with this heat name. Returns a dictionary:
+        { "4WD": HeatStartLists, "2WD": HeatStartLists }
+        """
+        return self.start_lists[heat_name]
+
+    def get_start_lists_dict(self):
+        return {
+            heat_name: {
+                rcclass: {
+                    group: group_start_list.get_serializable(group)
+                    for group in group_start_list.get_groups()
+                }
+                for rcclass, group_start_list in self.start_lists[heat_name].items()
+            }
+            for heat_name in self.start_lists
+        }
+
+    def get_results_dict(self, convert_from_durations=True):
+        return {
+            heat_name: {
+                rcclass: {
+                    group: group_results[group].get_serializable(convert_from_durations)
+                    for group in group_results
+                }
+                for rcclass, group_results in self.results[heat_name].items()
+            }
+            for heat_name in self.results
+        }
+
+    def are_all_races_in_round_completed(self, heat_name: str) -> bool:
+        """
+        Returns whether all races in a heat has a result, and we are thus
+        ready to start the next round.
+        """
+        if not self.has_heat(heat_name):
+            return False
+
+        for rcclass in self.start_lists[heat_name]:
+            for group in self.get_groups_in_race(heat_name, rcclass):
+                if not self.heat_has_result(heat_name):
+                    return False
+                if not self.group_has_result(heat_name, rcclass, group):
+                    return False
+        return True
+
+    def heat_has_result(self, heat_name: str) -> bool:
+        return heat_name in self.results
+
+    def group_has_result(self, heat_name: str, rcclass: str, group: str) -> bool:
+        return group in self.results[heat_name][rcclass]
+
+    def get_class_results(self, heat_name: str, rcclass: str) -> Dict[str, RaceResults]:
+        """
+        Gets the results for each class.
+        Returns a dictionary where each group is mapped to its result.
+        """
+        return self.results[heat_name][rcclass]
+
+    def increment_current_heat(self) -> None:
+        self.current_heat += 1
+
+    def set_new_start_lists(self, heat_name: str, raw_start_lists: Dict[str, Dict[str, List[Driver]]]) -> None:
+        """Sets the start lists from a dictionary with classes mapped to groups and lists of drivers."""
+        if heat_name not in self.start_lists:
+            self.start_lists[heat_name] = {}
+        for rcclass in raw_start_lists:
+            self.start_lists[heat_name][rcclass] = HeatStartLists(raw_start_lists[rcclass], heat_name, rcclass)
+
     def _update_start_lists_for_finals(self):
+        # FIXME This is probably not properly converted
         for rcclass in ("2WD", "4WD"):
             class_results = self.results[FINALS_NAME][rcclass]
             groups = ("C", "B", "A")
             for i in range(len(groups) - 1):
                 group = groups[i]
                 if group in class_results:
-                    group_winner = class_results[group]["positions"][0]
+                    group_winner = class_results[group].positions[0]
                     higher_group = groups[i + 1]
-                    higher_group_start_list = self.start_lists[FINALS_NAME][rcclass][higher_group]
+                    # FIXME like wtf where does this even go? this probably won't work
+                    higher_group_start_list = self.start_lists[FINALS_NAME][rcclass].get_start_list(higher_group)
                     if group_winner not in higher_group_start_list:
                         higher_group_start_list.append(group_winner)
 
@@ -306,26 +399,8 @@ class Database:
     def _get_serializeable_db(self) -> Dict[str, Dict[str, Dict[str, Dict]]]:
         database = {
             ALL_PARTICIPANTS_KEY: [d.number for d in self.all_participants],
-            START_LISTS_KEY: {
-                heat_name: {
-                    rcclass: {
-                        group: group_start_list.get_serializable(group)
-                        for group in group_start_list.get_groups()
-                    }
-                    for rcclass, group_start_list in self.start_lists[heat_name].items()
-                }
-                for heat_name in self.start_lists
-            },
-            RESULTS_KEY: {
-                heat_name: {
-                    rcclass: {
-                        group: group_results[group].get_serializable()
-                        for group in group_results
-                    }
-                    for rcclass, group_results in self.results[heat_name].items()
-                }
-                for heat_name in self.results
-            },
+            START_LISTS_KEY: self.get_start_lists_dict(),
+            RESULTS_KEY: self.get_results_dict(),
             CURRENT_HEAT_KEY: self.current_heat
         }
         return database
@@ -411,8 +486,15 @@ def get_todays_filename() -> str:
 
 def get_database() -> Database:
     filename = get_todays_filename()
-    json_db = _load_database(filename)
+    json_db = _load_database(filename, convert_to_durations=True)
     return Database(json_db)
+
+
+def load_and_deserialize_database(filepath: str) -> Database:
+    with open(filepath) as f:
+        json_db = json.load(f)
+    replaced_with_durations = _replace_with_durations(json_db)
+    return Database(replaced_with_durations)
 
 
 def _load_database(filename, convert_to_durations=False) -> Dict:

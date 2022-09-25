@@ -1,24 +1,24 @@
-from functools import reduce
-from typing import Tuple
+from typing import Tuple, Dict, List
 
 try:
     from racelogic.duration import Duration
+    from racelogic.db import HeatStartLists
 
     import racelogic.htmlparsing
     import racelogic.names
-    import racelogic.util
+    import racelogic.util as util
     import racelogic.filelocation
-    import racelogic.db
+    import racelogic.db as db
 except ImportError:
     # i'm sorry this is ugly
     from duration import Duration
+    from db import HeatStartLists
 
     import htmlparsing
     import names
-    import util
+    import util as util
     import filelocation
-    import db
-    
+    import db as db
 
 import argparse
 import sys
@@ -162,32 +162,22 @@ def get_result_text_message(results: db.RaceResults, rcclass: str, group: str, r
         )
 
 
-def _get_previous_group_wrap_around(heat_start_lists, race_order, index):
-    # FIXME this code does not belong in this file
-    temp_index = index
-    while True:
-        if temp_index == 0:
-            temp_index = len(race_order) - 1
-        else:
-            temp_index -= 1
-        previous_rcclass, previous_group = race_order[temp_index]
-
-        if previous_group in heat_start_lists[previous_rcclass]:
-            return previous_rcclass, previous_group
-
-
-def create_heat_start_list_text_message(heat_start_lists, race_order, race, extra_text=""):
+def create_heat_start_list_text_message(
+        heat_start_lists: Dict[str, HeatStartLists],
+        race_order: List[Tuple[str, str]],
+        heat_name: str,
+        extra_text: str = "") -> str:
     start_list_texts = []
     for index, (rcclass, group) in enumerate(race_order):
-        # FIXME this code does not belong in this file
-        if group not in heat_start_lists[rcclass]:
+        if not heat_start_lists[rcclass].has_group(group):
             continue
-        start_list = heat_start_lists[rcclass][group]
-        entries = [f"    {i + 1}. {number} - {names.NAMES[number]}"
-                   for i, number in enumerate(start_list)]
+        start_list = heat_start_lists[rcclass].get_start_list(group)
+        entries = [f"    {i + 1}. {driver.number} - {driver.name}"
+                   for i, driver in enumerate(start_list)]
         previous_rcclass, previous_group = util.get_previous_group_wrap_around(
             heat_start_lists, race_order, index)
         marshal_text = f"{previous_rcclass} {previous_group}"
+        # noinspection StrFormat
         start_list_texts.append(
             SINGLE_HEAT_START_LIST_TEMPLATE.format(
                 rcclass=rcclass,
@@ -196,8 +186,9 @@ def create_heat_start_list_text_message(heat_start_lists, race_order, race, extr
                 marshals=marshal_text
             )
         )
+    # noinspection StrFormat
     return HEAT_START_LIST_TEXT_TEMPLATE.format(
-        race=race,
+        race=heat_name,
         race_flag=RACE_FLAG,
         start_list_texts="\n".join(start_list_texts),
         extra_text=extra_text

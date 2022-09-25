@@ -11,6 +11,8 @@ TEST_DATABASE_PATH = "./testdata/testdatabases"
 
 class DBTests(TestCase):
 
+    test_databases = None
+
     @classmethod
     def setUpClass(cls):
         cls.test_databases = {}
@@ -18,8 +20,7 @@ class DBTests(TestCase):
         for database in database_files:
             path = os.path.join(TEST_DATABASE_PATH, database)
             name = database.split(".json")[0]
-            with open(path) as f:
-                cls.test_databases[name] = json.load(f)
+            cls.test_databases[name] = db.load_and_deserialize_database(path)
 
     def setUp(self):
         self.setUpPyfakefs(modules_to_reload=[db])
