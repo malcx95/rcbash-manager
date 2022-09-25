@@ -1,12 +1,15 @@
-import resultcalculation
+from typing import Dict
+
 import db
-import json
-import os
-import copy
+import htmlparsing
+import resultcalculation
+from duration import Duration
 from db import QUALIFIERS_NAME, START_LISTS_KEY, RESULTS_KEY, \
     CURRENT_HEAT_KEY, ALL_PARTICIPANTS_KEY, EIGHTH_FINAL_NAME, QUARTER_FINAL_NAME, FINALS_NAME, CURRENT_HEAT_KEY
-import htmlparsing
-from duration import Duration
+
+
+import json
+import os
 from pathlib import Path
 from pyfakefs.fake_filesystem_unittest import TestCase
 import unittest.mock as mock
@@ -17,24 +20,26 @@ TEST_DATABASE_PATH = "./testdata/testdatabases"
 
 class ResultCalculationTests(TestCase):
 
+    test_databases: Dict[str, db.Database] = {}
+
     @classmethod
     def setUpClass(cls):
-        cls.test_databases = {}
         database_files = os.listdir(TEST_DATABASE_PATH)
         for database in database_files:
             path = os.path.join(TEST_DATABASE_PATH, database)
             name = database.split(".json")[0]
-            with open(path) as f:
-                cls.test_databases[name] = json.load(f)
+            cls.test_databases[name] = db.load_and_deserialize_database(path)
 
     def setUp(self):
         self.clipboard = None
+
         def fake_clipboard_copy(obj):
             self.clipboard = obj
 
         resultcalculation.clipboard.copy = fake_clipboard_copy
-        self.setUpPyfakefs(modules_to_reload=[resultcalculation, db])
+        self.setUpPyfakefs(modules_to_reload=[db, resultcalculation])
         db.RESULT_FOLDER_PATH = Path("test_rcbash_results")
+        resultcalculation.db.RESULT_FOLDER_PATH = Path("test_rcbash_results")
         db.RESULT_FOLDER_PATH.mkdir(exist_ok=True)
 
     def tearDown(self):
@@ -48,22 +53,23 @@ class ResultCalculationTests(TestCase):
         return [list(t) for t in list_of_tuples]
 
     def setup_fake_html_parsing(self, total_times, num_laps_driven, best_laptimes):
-        htmlparsing.get_total_times = mock.Mock(return_value=total_times)
-        htmlparsing.get_num_laps_driven = mock.Mock(return_value=num_laps_driven)
-        htmlparsing.get_best_laptimes = mock.Mock(return_value=best_laptimes)
-        htmlparsing.get_race_participants = mock.Mock(return_value=[num for num in total_times])
+        resultcalculation.htmlparsing.get_total_times = mock.Mock(return_value=total_times)
+        resultcalculation.htmlparsing.get_num_laps_driven = mock.Mock(return_value=num_laps_driven)
+        resultcalculation.htmlparsing.get_best_laptimes = mock.Mock(return_value=best_laptimes)
+        resultcalculation.htmlparsing.get_race_participants = mock.Mock(return_value=[num for num in total_times])
         resultcalculation._read_results = mock.Mock(return_value=None)
 
     def setup_database_state(self, start_lists, results, current_heat):
-        database = {START_LISTS_KEY: start_lists}
+        json_db = {START_LISTS_KEY: start_lists}
         all_participants = list(set(num
                                     for rcclass in start_lists[QUALIFIERS_NAME].values()
                                     for group in rcclass.values()
                                     for num in group))
-        database[ALL_PARTICIPANTS_KEY] = all_participants
-        database[RESULTS_KEY] = results
-        database[CURRENT_HEAT_KEY] = current_heat
-        db.save_database(database)
+        json_db[ALL_PARTICIPANTS_KEY] = all_participants
+        json_db[RESULTS_KEY] = results
+        json_db[CURRENT_HEAT_KEY] = current_heat
+        database = db.Database(json_db)
+        database.save()
 
     def _assert_correct_results_added(self, expected, actual):
         for heat, results in expected.items():
@@ -117,28 +123,30 @@ class ResultCalculationTests(TestCase):
 
     def test_create_qualifiers(self):
         participants_entered = [
-            "90", "90", "89", "1", "11", "", "y", # 2WD A
-            "90", "90", "12", "27", "29", "", "y", # 2WD B
-            "90", "90", "21", "22", "26", "", "y", # 2WD C
-            "90", "90", "35", "49", "51", "", "y", # 4WD A
-            "90", "90", "67", "68", "36", "", "y", # 4WD B
+            "90", "90", "89", "1", "11", "", "y",  # 2WD A
+            "90", "90", "12", "27", "29", "", "y",  # 2WD B
+            "90", "90", "21", "22", "26", "", "y",  # 2WD C
+            "90", "90", "35", "49", "51", "", "y",  # 4WD A
+            "90", "90", "67", "68", "36", "", "y",  # 4WD B
             "", "y"
         ]
         self.setup_fake_input(participants_entered)
         resultcalculation.create_qualifiers()
         database = db.get_database()
 
-        expected_all_participants = {90, 89, 11, 12, 27, 29, 21, 22, 26, 35, 49, 51, 67, 68, 36}
+        expected_all_participants = {
+            db.Driver(num) for num in {90, 89, 11, 12, 27, 29, 21, 22, 26, 35, 49, 51, 67, 68, 36}
+        }
         expected_start_lists = {
             "Kval": {
                 "2WD": {"A": [90, 89, 11], "B": [12, 27, 29], "C": [21, 22, 26]},
                 "4WD": {"A": [35, 49, 51], "B": [67, 68, 36]},
             }
         }
-        self.assertSetEqual(set(database["all_participants"]), expected_all_participants)
-        self.assertDictEqual(database["start_lists"], expected_start_lists)
-        self.assertDictEqual(database["results"], {})
-        self.assertEqual(database["current_heat"], 0)
+        self.assertSetEqual(set(database.all_participants), expected_all_participants)
+        self.assertDictEqual(database.get_start_lists_dict(), expected_start_lists)
+        self.assertDictEqual(database.get_results_dict(), {})
+        self.assertEqual(database.get_current_heat(), db.QUALIFIERS_NAME)
 
     def test_add_new_result_qualifiers(self):
         list_of_initial_start_lists = [
@@ -270,6 +278,7 @@ class ResultCalculationTests(TestCase):
                 "average_laptimes": expected_average,
                 "manual": False
             }
+
             if expected_dns is not None:
                 expected_group_results["dns"] = expected_dns
 
@@ -286,14 +295,15 @@ class ResultCalculationTests(TestCase):
 
                 resultcalculation.add_new_result()
                 database = db.get_database()
-                self._assert_correct_results_added(expected_results, database[RESULTS_KEY])
-                self.assertDictEqual(database[START_LISTS_KEY], initial_start_lists,
+                actual_results = database.get_results_dict(convert_from_durations=False)
+                self._assert_correct_results_added(expected_results, actual_results)
+                self.assertDictEqual(database.get_start_lists_dict(), initial_start_lists,
                                      "Start lists were changed!")
-                self.assertEqual(database[CURRENT_HEAT_KEY], 0, "Current heat was changed!")
+                self.assertEqual(database.current_heat, 0, "Current heat was changed!")
 
     def test_start_new_race_round_qualifiers_normal(self):
         database = self.test_databases["test_start_new_race_round_qualifiers_normal"]
-        db.save_database(database)
+        database.save()
         self.setup_fake_input(["y"])
 
         resultcalculation.start_new_race_round()
@@ -310,7 +320,7 @@ class ResultCalculationTests(TestCase):
             }
         }
         new_database = db.get_database()
-        self.assertDictEqual(new_database[START_LISTS_KEY][EIGHTH_FINAL_NAME],
+        self.assertDictEqual(new_database.get_start_lists_dict()[db.EIGHTH_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made from qualifiers!")
 

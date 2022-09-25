@@ -1,25 +1,23 @@
 from collections import defaultdict
-from typing import List, Dict, Tuple, Iterable, Callable, Any
+from typing import List, Dict, Tuple, Iterable, Callable, Any, Set
 
 try:
     from racelogic.names import NAMES
     from racelogic.duration import Duration
-    from racelogic.db import RACE_ORDER, CLASS_ORDER
 
     import racelogic.filelocation
-    import racelogic.htmlparsing
-    import racelogic.textmessages
+    import racelogic.htmlparsing as htmlparsing
+    import racelogic.textmessages as textmessages
     import racelogic.util as util
     import racelogic.db as db
 
 except ImportError:
     from names import NAMES
     from duration import Duration
-    from db import RACE_ORDER, CLASS_ORDER
 
     import filelocation
-    import htmlparsing
-    import textmessages
+    import htmlparsing as htmlparsing
+    import textmessages as textmessages
     import util
     import db
 
@@ -116,7 +114,7 @@ def _confirm_yes_no(msg="Confirm?"):
 
 def _confirm_group_done(start_list, rcclass, group):
     print(f"This is the start list for {rcclass} {group}:")
-    print("\n".join(f"{i+1}. {num} - {NAMES[num]}" for i, num in enumerate(start_list)))
+    print("\n".join(f"{i + 1}. {num} - {NAMES[num]}" for i, num in enumerate(start_list)))
 
     return _confirm_yes_no()
 
@@ -203,11 +201,11 @@ def _calculate_points_from_finals(results, points):
 
 def _calculate_cup_points(database) -> Tuple[Dict, Dict]:
     points_per_race = {"2WD": defaultdict(list), "4WD": defaultdict(list)}
-    for race in RACE_ORDER:
-        if _are_all_races_in_round_completed(database, race):
-            if race not in (QUALIFIERS_NAME, FINALS_NAME) and race in database[RESULTS_KEY]:
-                _calculate_points_from_non_finals(database[RESULTS_KEY][race], points_per_race)
-            elif race == FINALS_NAME:
+    for heat_name in db.RACE_ORDER:
+        if database.are_all_races_in_round_completed(heat_name):
+            if heat_name not in (QUALIFIERS_NAME, FINALS_NAME) and heat_name in database[RESULTS_KEY]:
+                _calculate_points_from_non_finals(database[RESULTS_KEY][heat_name], points_per_race)
+            elif heat_name == FINALS_NAME:
                 _calculate_points_from_finals(database[RESULTS_KEY][FINALS_NAME], points_per_race)
 
     return {num: sum(point_list)
@@ -231,19 +229,6 @@ def create_qualifiers():
     database.save()
 
 
-def _are_all_races_in_round_completed(database, race):
-    if race not in database[START_LISTS_KEY]:
-        return False
-
-    for rcclass in database[START_LISTS_KEY][race]:
-        for group in database[START_LISTS_KEY][race][rcclass]:
-            if race not in database[RESULTS_KEY]:
-                return False
-            if group not in database[RESULTS_KEY][race][rcclass]:
-                return False
-    return True
-
-
 def _get_current_groups(database):
     race = database.get_current_heat()
     return {
@@ -252,7 +237,7 @@ def _get_current_groups(database):
     }
 
 
-def _enter_new_groups():
+def _enter_new_groups() -> Dict[str, List[str]]:
     groups_to_add = {
         "A": ["A"],
         "B": ["A", "B"],
@@ -279,56 +264,62 @@ def _select_from_list(options: List[Any], message: str, element_format_fn: Calla
     return options[int(ans) - 1]
 
 
-def _create_almost_equal_partitions(numbers, num_partitions):
-    if len(numbers) % num_partitions == 0:
+def _create_almost_equal_partitions(drivers: List[db.Driver], num_partitions: int) -> List[List[db.Driver]]:
+    if len(drivers) % num_partitions == 0:
         partitions = []
-        partition_size = len(numbers) // num_partitions
+        partition_size = len(drivers) // num_partitions
         for i in range(num_partitions):
-            partitions.append(numbers[i*partition_size:(i+1)*partition_size])
+            partitions.append(drivers[i * partition_size:(i + 1) * partition_size])
         return partitions
     else:
-        first_partition_size = math.ceil(len(numbers) / num_partitions)
-        return [numbers[:first_partition_size]] + \
-                _create_almost_equal_partitions(numbers[first_partition_size:], num_partitions - 1)
+        first_partition_size = math.ceil(len(drivers) / num_partitions)
+        return [drivers[:first_partition_size]] + \
+            _create_almost_equal_partitions(drivers[first_partition_size:], num_partitions - 1)
 
 
-def _create_start_list_from_qualifiers(groups, database):
+def _create_start_list_from_qualifiers(groups: Dict[str, List[str]], database: db.Database) \
+        -> Tuple[Dict[str, Dict[str, List[db.Driver]]], Set[db.Driver]]:
+    """
+    Creates the new start lists based on qualifiers results.
+
+    Returns a dictionary where each class is mapped to a dictionary,
+    where each group is mapped to a list of drivers (the start list),
+    as well as a set of the duplicate drivers.
+    """
     start_lists = {"2WD": {}, "4WD": {}}
-    qualifier_results = database[RESULTS_KEY][QUALIFIERS_NAME]
 
-    def _group_sort_fn(item):
-        group, results = item
-        positions = results["positions"]
+    def _group_sort_fn(item: Tuple[str, db.RaceResults]) -> Tuple[int, int]:
+        _, results = item
+        positions = results.positions
         first = positions[0]
-        return (results["num_laps_driven"][first], -results["total_times"][first].milliseconds)
+        return results.num_laps_driven[first], -results.total_times[first].milliseconds
 
-    added_drivers = set()
-    duplicate_drivers = set()
+    added_drivers: Set[db.Driver] = set()
+    duplicate_drivers: Set[db.Driver] = set()
     for rcclass in start_lists:
-        all_total_times = {}
-        all_num_laps_driven = {}
-
-        group_results = sorted(
-            qualifier_results[rcclass].items(),
+        # Don't know why the type checker disagree here, but this is the correct type.
+        # noinspection PyTypeChecker
+        class_results: List[Tuple[str, db.RaceResults]] = sorted(
+            database.get_class_results(db.QUALIFIERS_NAME, rcclass).items(),
             key=_group_sort_fn,
             reverse=True
         )
 
-        group_positions = [copy.deepcopy(results["positions"]) for _, results in group_results]
+        class_positions = [copy.deepcopy(results.positions) for _, results in class_results]
 
-        all_positions = []
+        all_positions: List[db.Driver] = []
         curr_heat = 0
-        while any(group_positions):
-            if len(group_positions[curr_heat]):
-                driver_num = group_positions[curr_heat].pop(0)
+        while any(class_positions):
+            if len(class_positions[curr_heat]):
+                driver = class_positions[curr_heat].pop(0)
 
-                if driver_num in added_drivers:
-                    duplicate_drivers.add(driver_num)
+                if driver in added_drivers:
+                    duplicate_drivers.add(driver)
                 else:
-                    all_positions.append(driver_num)
-                    added_drivers.add(driver_num)
+                    all_positions.append(driver)
+                    added_drivers.add(driver)
 
-            curr_heat = (curr_heat + 1) % len(group_positions)
+            curr_heat = (curr_heat + 1) % len(class_positions)
 
         groups_for_class = groups[rcclass]
         partitioned_positions = _create_almost_equal_partitions(all_positions, len(groups_for_class))
@@ -389,12 +380,11 @@ def _remove_and_return_duplicate_drivers(start_lists):
 
 
 def _sort_by_points_and_best_heats(points):
-
     def key_fn(item):
         number, points = item
-        point_histogram = [0]*20
+        point_histogram = [0] * 20
         for point in points:
-            point_histogram[point-1] += 1
+            point_histogram[point - 1] += 1
         return tuple([sum(points)] + list(reversed(point_histogram)))
 
     return sorted(points.items(), key=key_fn)
@@ -412,44 +402,43 @@ def _create_start_lists_for_finals(database):
         while highest_points:
             curr_group = groups[group_index]
             if ((len(start_lists[rcclass][curr_group]) == (MAX_NUM_PARTICIPANTS_PER_GROUP - 1)) and
-                (len(highest_points) > 1)):
+                    (len(highest_points) > 1)):
                 group_index += 1
             else:
                 start_lists[rcclass][curr_group].append(highest_points.pop()[0])
     return start_lists, _remove_and_return_duplicate_drivers(start_lists)
 
 
-def _create_new_start_lists(groups, database):
-    race = database.get_current_heat()
-    if race == QUALIFIERS_NAME:
+def _create_new_start_lists(groups: Dict[str, List[str]], database: db.Database) \
+        -> Tuple[Dict[str, Dict[str, List[db.Driver]]], Set[db.Driver]]:
+    current_heat = database.get_current_heat()
+    if current_heat == db.QUALIFIERS_NAME:
         return _create_start_list_from_qualifiers(groups, database)
-    elif race in (EIGHTH_FINAL_NAME, QUARTER_FINAL_NAME):
-        return _create_start_list_intermediate_races(groups, database, race)
+    elif current_heat in (db.EIGHTH_FINAL_NAME, db.QUARTER_FINAL_NAME):
+        return _create_start_list_intermediate_races(groups, database, current_heat)
     else:
         return _create_start_lists_for_finals(database)
 
 
 def start_new_race_round():
     database = db.get_database()
-    race = database.get_current_heat()
-    if not _are_all_races_in_round_completed(database, race):
+    current_heat = database.get_current_heat()
+    if not database.are_all_races_in_round_completed(current_heat):
         print("Can't start new round yet! Not all races are completed!")
         return
 
-    groups = _get_current_groups(database)
+    groups = database.get_current_groups()
 
-    if database.get_current_heat() == QUALIFIERS_NAME:
+    if database.get_current_heat() == db.QUALIFIERS_NAME:
         print(f"Current groups are 2WD {', '.join(groups['2WD'])} and 4WD {', '.join(groups['4WD'])}")
         while not _confirm_yes_no("Do you want to use these groups?"):
             groups = _enter_new_groups()
             print(f"New groups are 2WD {', '.join(groups['2WD'])} and 4WD {', '.join(groups['4WD'])}")
 
     new_start_lists, duplicate_drivers = _create_new_start_lists(groups, database)
-    current_heat = database[CURRENT_HEAT_KEY]
-    current_heat += 1
-    database[CURRENT_HEAT_KEY] = current_heat
 
-    database[START_LISTS_KEY][RACE_ORDER[current_heat]] = new_start_lists
+    database.increment_current_heat()
+    database.set_new_start_lists(database.get_current_heat(), new_start_lists)
 
     show_current_heat_start_list(database)
 
@@ -457,7 +446,7 @@ def start_new_race_round():
         print(f"Warning: Driver(s) {', '.join(str(n) for n in duplicate_drivers)} may have been in the wrong heat.")
         if not _confirm_yes_no("Do you want to use these start lists anyway?"):
             return
-    db.save_database(database)
+    database.save()
 
 
 def _get_next_race(database):
@@ -657,18 +646,18 @@ def show_latest_result(select=False):
     print("^^ Copied to clipboard")
 
 
-def show_current_heat_start_list(database=None):
+def show_current_heat_start_list(database: db.Database = None) -> None:
     if database is None:
         database = db.get_database()
-    race = database.get_current_heat()
-    heat_start_lists = database[START_LISTS_KEY][race]
+    heat_name = database.get_current_heat()
+    heat_start_lists = database.get_start_lists_for_heat(heat_name)
 
     text_message = textmessages.create_heat_start_list_text_message(
         heat_start_lists,
-        CLASS_ORDER[race],
-        race,
+        db.CLASS_ORDER[heat_name],
+        heat_name,
         extra_text="Vinnare i lägre grupper deltar i nästa högre grupp (ex. B -> A)"
-                   if race == FINALS_NAME else "")
+        if heat_name == db.FINALS_NAME else "")
     clipboard.copy(text_message)
     print(text_message)
 
@@ -684,7 +673,7 @@ def get_all_start_lists(date) -> Tuple[Iterable[Tuple[str, List]], Dict[str, Dic
     next_heat, next_rcclass, next_group, _ = _get_next_race(database)
 
     for heat_index in range(current_heat_index + 1):
-        heat_name = RACE_ORDER[heat_index]
+        heat_name = db.RACE_ORDER[heat_index]
 
         marshals[heat_name] = {}
 
@@ -695,8 +684,8 @@ def get_all_start_lists(date) -> Tuple[Iterable[Tuple[str, List]], Dict[str, Dic
         for race_index, (rcclass, group) in reversed(list(enumerate(class_order))):
 
             is_next_race = next_heat == heat_name and \
-                next_rcclass == rcclass and \
-                next_group == group
+                           next_rcclass == rcclass and \
+                           next_group == group
 
             class_list = database[START_LISTS_KEY][heat_name][rcclass]
             if group not in class_list:
