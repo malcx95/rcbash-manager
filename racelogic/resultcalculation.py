@@ -16,8 +16,8 @@ except ImportError:
     from duration import Duration
 
     import filelocation
-    import htmlparsing as htmlparsing
-    import textmessages as textmessages
+    import htmlparsing
+    import textmessages
     import util
     import db
 

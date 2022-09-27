@@ -326,7 +326,7 @@ class ResultCalculationTests(TestCase):
 
     def test_start_new_race_round_qualifiers_dns(self):
         database = self.test_databases["test_start_new_race_round_qualifiers_dns"]
-        db.save_database(database)
+        database.save()
         self.setup_fake_input(["y"])
 
         resultcalculation.start_new_race_round()
@@ -343,13 +343,13 @@ class ResultCalculationTests(TestCase):
             }
         }
         new_database = db.get_database()
-        self.assertDictEqual(new_database[START_LISTS_KEY][EIGHTH_FINAL_NAME],
+        self.assertDictEqual(new_database.get_start_lists_dict()[db.EIGHTH_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made from qualifiers!")
 
     def test_start_new_race_round_qualifiers_merge_groups(self):
         database = self.test_databases["test_start_new_race_round_qualifiers_normal"]
-        db.save_database(database)
+        database.save()
         self.setup_fake_input([
             "n",  # don't use current groups
             "A",  # merge all 2WD to A
@@ -369,13 +369,13 @@ class ResultCalculationTests(TestCase):
             }
         }
         new_database = db.get_database()
-        self.assertDictEqual(new_database[START_LISTS_KEY][EIGHTH_FINAL_NAME],
+        self.assertDictEqual(new_database.get_start_lists_dict()[db.EIGHTH_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made from qualifiers!")
 
     def test_start_new_race_round_qualifiers_merge_groups_dns(self):
         database = self.test_databases["test_start_new_race_round_qualifiers_dns"]
-        db.save_database(database)
+        database.save()
         self.setup_fake_input([
             "n",  # don't use current groups
             "A",  # merge all 2WD to A
@@ -395,7 +395,7 @@ class ResultCalculationTests(TestCase):
             }
         }
         new_database = db.get_database()
-        self.assertDictEqual(new_database[START_LISTS_KEY][EIGHTH_FINAL_NAME],
+        self.assertDictEqual(new_database.get_start_lists_dict()[db.EIGHTH_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made from qualifiers!")
 
