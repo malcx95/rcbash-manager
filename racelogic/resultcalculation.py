@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import List, Dict, Tuple, Iterable, Callable, Any, Set
+from typing import List, Dict, Tuple, Iterable, Callable, Any, Set, Optional
 
 try:
     from racelogic.names import NAMES
@@ -167,7 +167,7 @@ def add_participants() -> Dict[str, Dict[str, List]]:
 def _should_get_points(group_results: db.RaceResults, driver: db.Driver) -> bool:
     if group_results.has_dns() and not group_results.did_driver_start(driver):
         return False
-    return group_results.was_manually_entered() or group_results.did_driver_start(driver)
+    return group_results.was_manually_entered() or group_results.driver_drove_any_laps(driver)
 
 
 def _calculate_points_from_non_finals(results: Dict[str, Dict[str, db.RaceResults]],
@@ -201,7 +201,7 @@ def _calculate_points_from_finals(results: Dict[str, Dict[str, db.RaceResults]],
                     current_points -= 2
 
 
-def _calculate_cup_points(database: db.Database) -> Tuple[Dict[db.Driver, int], Dict]:
+def _calculate_cup_points(database: db.Database) -> Tuple[Dict[db.Driver, int], Dict[str, Dict[db.Driver, List[int]]]]:
     points_per_race = {"2WD": defaultdict(list), "4WD": defaultdict(list)}
     for heat_name in db.RACE_ORDER:
         if database.are_all_races_in_round_completed(heat_name):
@@ -229,14 +229,6 @@ def create_qualifiers():
     database.set_first_qualifiers(participants)
 
     database.save()
-
-
-def _get_current_groups(database):
-    race = database.get_current_heat()
-    return {
-        "2WD": list(database[START_LISTS_KEY][race]["2WD"].keys()),
-        "4WD": list(database[START_LISTS_KEY][race]["4WD"].keys()),
-    }
 
 
 def _enter_new_groups() -> Dict[str, List[str]]:
@@ -386,11 +378,11 @@ def _remove_and_return_duplicate_drivers(start_lists):
 
 def _sort_by_points_and_best_heats(points):
     def key_fn(item):
-        number, points = item
+        number, p = item
         point_histogram = [0] * 20
-        for point in points:
+        for point in p:
             point_histogram[point - 1] += 1
-        return tuple([sum(points)] + list(reversed(point_histogram)))
+        return tuple([sum(p)] + list(reversed(point_histogram)))
 
     return sorted(points.items(), key=key_fn)
 
@@ -454,15 +446,15 @@ def start_new_race_round():
     database.save()
 
 
-def _get_next_race(database):
-    race = database.get_current_heat()
-    heat_start_lists = database[START_LISTS_KEY][race]
-    current_results = database[RESULTS_KEY].get(race)
-    for class_order_index, (rcclass, group) in enumerate(CLASS_ORDER[race]):
-        if group not in heat_start_lists[rcclass]:
+def _get_next_race(database: db.Database) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[int]]:
+    heat_name = database.get_current_heat()
+    heat_start_lists = database.get_start_lists_for_heat(heat_name)
+    current_results = database.get_heat_results(heat_name)
+    for class_order_index, (rcclass, group) in enumerate(db.CLASS_ORDER[heat_name]):
+        if not heat_start_lists[rcclass].has_group(group):
             continue
         if current_results is None or group not in current_results[rcclass]:
-            return race, rcclass, group, class_order_index
+            return heat_name, rcclass, group, class_order_index
     return None, None, None, None
 
 
@@ -607,34 +599,15 @@ def add_new_result_manually():
     print("^^ Copied to clipboard")
 
 
-def _get_latest_race_class_group(database):
-    race = database.get_current_heat()
-    class_order = CLASS_ORDER[race]
-    results = database[RESULTS_KEY]
-    heat_results = results.get(race)
-    if heat_results is None:
-        previous_heat = database.get_previous_heat()
-        heat_results = database.get(previous_heat)
-        if heat_results is None:
-            return None, None, None
-
-    for rcclass, group in reversed(class_order):
-        class_results = heat_results[rcclass]
-        if group in class_results:
-            return race, rcclass, group
-
-    return None, None, None
-
-
 def show_latest_result(select=False):
     database = db.get_database()
     if not select:
-        race, rcclass, group = _get_latest_race_class_group(database)
+        race, rcclass, group = database.get_latest_race_class_group()
     else:
         race_options = [(race, rcclass, group)
-                        for race in database[RESULTS_KEY]
+                        for race in database.get_heats_with_results()
                         for rcclass in ("2WD", "4WD")
-                        for group in database[RESULTS_KEY][race][rcclass]]
+                        for group in database.get_class_results(race, rcclass)]
         race, rcclass, group = _select_from_list(
             race_options, "Select which race to display results for.", lambda e: " ".join(e))
 
@@ -643,7 +616,7 @@ def show_latest_result(select=False):
         return
 
     results_text = textmessages.get_result_text_message(
-        database[RESULTS_KEY][race][rcclass][group], rcclass, group, race)
+        database.get_result(race, rcclass, group), rcclass, group, race)
 
     clipboard.copy(results_text)
     print(results_text)
@@ -670,10 +643,10 @@ def show_current_heat_start_list(database: db.Database = None) -> None:
 
 
 def get_all_start_lists(date) -> Tuple[Iterable[Tuple[str, List]], Dict[str, Dict]]:
-    database = db.get_database_with_date(date, convert_to_durations=False)
+    database = db.get_database_with_date(date)
     start_lists = []
     marshals = {}
-    current_heat_index = database[CURRENT_HEAT_KEY]
+    current_heat_index = database.current_heat
 
     next_heat, next_rcclass, next_group, _ = _get_next_race(database)
 
@@ -683,19 +656,19 @@ def get_all_start_lists(date) -> Tuple[Iterable[Tuple[str, List]], Dict[str, Dic
         marshals[heat_name] = {}
 
         heat_start_lists = []
-        class_order = CLASS_ORDER[heat_name]
+        class_order = db.CLASS_ORDER[heat_name]
 
-        # we need to reverse all of them so they are in reverse cronological order
+        # we need to reverse all of them, so they are in reverse chronological order
         for race_index, (rcclass, group) in reversed(list(enumerate(class_order))):
 
             is_next_race = next_heat == heat_name and \
                            next_rcclass == rcclass and \
                            next_group == group
 
-            class_list = database[START_LISTS_KEY][heat_name][rcclass]
-            if group not in class_list:
+            class_list = database.get_start_lists_for_heat(heat_name)[rcclass]
+            if not class_list.has_group(group):
                 continue
-            group_list = class_list[group]
+            group_list = class_list.get_start_list(group)
 
             heat_start_lists.append((rcclass, group, group_list, is_next_race))
 
@@ -704,12 +677,12 @@ def get_all_start_lists(date) -> Tuple[Iterable[Tuple[str, List]], Dict[str, Dic
 
             previous_rcclass, previous_group = \
                 util.get_previous_group_wrap_around(
-                    database[START_LISTS_KEY][heat_name],
-                    CLASS_ORDER[heat_name],
+                    database.get_start_lists_for_heat(heat_name),
+                    db.CLASS_ORDER[heat_name],
                     race_index
                 )
             previous_start_list = \
-                database[START_LISTS_KEY][heat_name][previous_rcclass][previous_group]
+                database.get_start_lists_for_heat(heat_name)[previous_rcclass].get_start_list(previous_group)
             marshals[heat_name][rcclass][group] = \
                 (previous_rcclass, previous_group, previous_start_list)
 
@@ -719,33 +692,34 @@ def get_all_start_lists(date) -> Tuple[Iterable[Tuple[str, List]], Dict[str, Dic
 
 def show_current_points(verbose):
     database = db.get_database()
-    race = database.get_current_heat()
+    heat_name = database.get_current_heat()
     points, points_per_race = _calculate_cup_points(database)
 
-    text_message = textmessages.create_points_list_text_message(points, points_per_race, race, verbose)
+    text_message = textmessages.create_points_list_text_message(points, points_per_race, heat_name, verbose)
     clipboard.copy(text_message)
     print(text_message)
 
     print("^^ Copied to clipboard")
 
 
-def get_current_cup_points(date) -> Tuple[Dict, Dict]:
-    database = db.get_database_with_date(date, convert_to_durations=True)
+def get_current_cup_points(date) -> Tuple[Dict[db.Driver, int], Dict[str, Dict[db.Driver, List[int]]]]:
+    database = db.get_database_with_date(date)
     return _calculate_cup_points(database)
 
 
 def show_start_message():
     database = db.get_database()
-    race, rcclass, group, class_order_index = _get_next_race(database)
 
-    if race is None:
+    heat_name, rcclass, group, class_order_index = _get_next_race(database)
+
+    if heat_name is None:
         print("There are no more races in this heat!")
         return
 
-    heat_start_lists = database[START_LISTS_KEY][race]
+    heat_start_lists = database.get_start_lists_for_heat(heat_name)
 
     text_message = textmessages.create_race_start_message(
-        heat_start_lists, CLASS_ORDER[race], race, rcclass, group, class_order_index)
+        heat_start_lists, db.CLASS_ORDER[heat_name], heat_name, rcclass, group, class_order_index)
 
     clipboard.copy(text_message)
     print(text_message)

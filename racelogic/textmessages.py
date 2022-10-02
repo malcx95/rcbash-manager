@@ -20,9 +20,6 @@ except ImportError:
     import filelocation
     import db as db
 
-import argparse
-import sys
-
 
 CLASSES = {2: "2WD", 4: "4WD"}
 RACES = {
@@ -195,6 +192,7 @@ def create_heat_start_list_text_message(
     )
 
 
+# noinspection StrFormat
 def create_points_list_text_message(all_points, points_per_race, race, verbose):
     points_lists = []
     for rcclass in points_per_race:
@@ -205,12 +203,12 @@ def create_points_list_text_message(all_points, points_per_race, race, verbose):
         )
         if verbose:
             point_texts = []
-            for num, p in points:
-                point_summation_list = " + ".join(str(p) for p in points_per_race[rcclass][num])
-                point_texts.append(f"{num} - {names.NAMES[num]}: {point_summation_list} = {p}")
+            for driver, p in points:
+                point_summation_list = " + ".join(str(p) for p in points_per_race[rcclass][driver])
+                point_texts.append(f"{driver.number} - {driver.name}: {point_summation_list} = {p}")
         else:
-            point_texts = [f"{num} - {names.NAMES[num]}: {p}"
-                           for num, p in points]
+            point_texts = [f"{driver.number} - {driver.name}: {p}"
+                           for driver, p in points]
         list_text = "\n".join(point_texts)
         points_lists.append(f"{rcclass}:\n{list_text}")
 
@@ -220,64 +218,28 @@ def create_points_list_text_message(all_points, points_per_race, race, verbose):
     )
 
 
-def create_race_start_message(heat_start_lists, race_order, race, rcclass, group, class_order_index):
-    start_list = heat_start_lists[rcclass][group]
+# noinspection StrFormat
+def create_race_start_message(heat_start_lists: Dict[str, HeatStartLists],
+                              race_order: List[Tuple[str, str]],
+                              race: str, rcclass: str, group: str, class_order_index: int):
+    start_list = heat_start_lists[rcclass].get_start_list(group)
     previous_rcclass, previous_group = util.get_previous_group_wrap_around(
         heat_start_lists, race_order, class_order_index)
-    marshal_list = heat_start_lists[previous_rcclass][previous_group]
+    marshal_list = heat_start_lists[previous_rcclass].get_start_list(previous_group)
 
     return START_MESSAGE_TEMPLATE.format(
         rcclass=rcclass,
         group=group,
         race=race,
-        start_list="\n".join(f"{i + 1}. {num} - {names.NAMES[num]}" for i, num in enumerate(start_list)),
+        start_list="\n".join(f"{i + 1}. {driver.number} - {driver.name}"
+                             for i, driver in enumerate(start_list)),
         marshal_rcclass=previous_rcclass,
         marshal_group=previous_group,
-        marshals="\n".join(f"{i + 1}. {num} - {names.NAMES[num]}" for i, num in enumerate(marshal_list)),
+        marshals="\n".join(f"{i + 1}. {driver.number} - {driver.name}"
+                           for i, driver in enumerate(marshal_list)),
         race_flag=RACE_FLAG
     )
 
 
 def create_ordered_list_text(result, create_line):
     return "\n".join(create_line(i, item) for i, item in enumerate(result))
-
-
-def main():
-    argparser = argparse.ArgumentParser(description="Time to race!")
-    argparser.add_argument("-c", "--rcclass", type=int, required=True, help="2 for 2WD, 4 for 4WD")
-    argparser.add_argument("-g", "--group", type=str, required=True,
-                           help="A, B or C")
-    argparser.add_argument("-r", "--race", type=int, required=True,
-                           help="16, 8, 4, 2 or 1")
-
-    args = argparser.parse_args()
-    if args.rcclass not in CLASSES:
-        parser.error("Class must be 2 or 4")
-        sys.exit(-1)
-
-    if args.race not in RACES:
-        parser.error("Class must be 1, 2, 4, 8 or 16")
-        sys.exit(-1)
-
-    parser = htmlparsing.RCMHtmlParser()
-
-    html_file_contents = filelocation.find_and_read_latest_html_file()
-
-    parser.parse_data(html_file_contents)
-
-    total_times = htmlparsing.get_total_times(parser)
-    num_laps_driven = htmlparsing.get_num_laps_driven(parser)
-    positions = htmlparsing.get_positions(total_times, num_laps_driven)
-    best_laptimes = htmlparsing.get_best_laptimes(parser)
-    average_laptimes = htmlparsing.get_average_laptimes(total_times, num_laps_driven)
-
-    text = get_text_message(total_times, num_laps_driven, positions,
-                            best_laptimes, average_laptimes,
-                            CLASSES[args.rcclass], args.group, RACES[args.race])
-
-    clipboard.copy(text)
-    print(text)
-
-
-if __name__ == "__main__":
-    main()

@@ -20,7 +20,8 @@ class DBTests(TestCase):
         for database in database_files:
             path = os.path.join(TEST_DATABASE_PATH, database)
             name = database.split(".json")[0]
-            cls.test_databases[name] = db.load_and_deserialize_database(path)
+            with open(path) as f:
+                cls.test_databases[name] = db._replace_with_durations(json.load(f))
 
     def setUp(self):
         self.setUpPyfakefs(modules_to_reload=[db])
@@ -34,9 +35,9 @@ class DBTests(TestCase):
                 database._write_database(db_name + ".json")
                 
                 with open(db.RESULT_FOLDER_PATH / (db_name + ".json")) as f:
-                    saved_db = json.load(f)
+                    saved_db = db._replace_with_durations(json.load(f))
 
-                self.assertDictEqual(test_db_json, saved_db,
+                self.assertDictEqual(db._replace_with_durations(test_db_json), saved_db,
                                      "Saved database differs from loaded!")
 
 if __name__ == "__main__":
