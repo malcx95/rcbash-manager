@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple, Iterable, Any
+from typing import List, Dict, Tuple, Iterable, Any, Optional
 
 try:
     from racelogic.duration import Duration
@@ -146,13 +146,16 @@ class RaceResults:
             self.dns = number_list_to_driver_list(dns)
         self.very_best_laptime: Duration = best_laptimes[0][1] if best_laptimes else None
 
-    def _parse_positions(self, positions: List[int]) -> List[Driver]:
+    @staticmethod
+    def _parse_positions(positions: List[int]) -> List[Driver]:
         return number_list_to_driver_list(positions)
 
-    def _parse_dict(self, collection: Dict[int, Any]) -> Dict[Driver, Any]:
+    @staticmethod
+    def _parse_dict(collection: Dict[int, Any]) -> Dict[Driver, Any]:
         return {Driver(int(num)): val for num, val in collection.items()}
 
-    def _parse_time_list(self, collection: List[Tuple[int, Duration]]) -> List[Tuple[Driver, Duration]]:
+    @staticmethod
+    def _parse_time_list(collection: List[Tuple[int, Duration]]) -> List[Tuple[Driver, Duration]]:
         return [(Driver(num), duration) for num, duration in collection]
 
     def best_laptimes_dict(self):
@@ -293,12 +296,12 @@ class Database:
     def get_groups_in_race(self, heat_name: str, rcclass: str) -> List[str]:
         return self.start_lists[heat_name][rcclass].get_groups()
 
-    def get_heat_results(self, heat_name: str) -> Dict[str, Dict[str, RaceResults]]:
+    def get_heat_results(self, heat_name: str) -> Optional[Dict[str, Dict[str, RaceResults]]]:
         """
-        Gets all results for a particular heat.
+        Gets all results for a particular heat. Returns None if it doesn't exist.
         Returns {"4WD": {<group>: RaceResults}, "2WD": {...}}
         """
-        return self.results[heat_name]
+        return self.results.get(heat_name)
 
     def get_current_groups(self) -> Dict[str, List[str]]:
         """
@@ -371,6 +374,9 @@ class Database:
         """
         return self.results[heat_name][rcclass]
 
+    def get_heats_with_results(self) -> List[str]:
+        return list(self.results.keys())
+
     def increment_current_heat(self) -> None:
         self.current_heat += 1
 
@@ -380,6 +386,23 @@ class Database:
             self.start_lists[heat_name] = {}
         for rcclass in raw_start_lists:
             self.start_lists[heat_name][rcclass] = HeatStartLists(raw_start_lists[rcclass], heat_name, rcclass)
+
+    def get_latest_race_class_group(self) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+        heat_name = self.get_current_heat()
+        class_order = CLASS_ORDER[heat_name]
+        heat_results = self.get_heat_results(heat_name)
+        if heat_results is None:
+            previous_heat = self.get_previous_heat()
+            heat_results = self.results.get(previous_heat)
+            if heat_results is None:
+                return None, None, None
+
+        for rcclass, group in reversed(class_order):
+            class_results = heat_results[rcclass]
+            if group in class_results:
+                return heat_name, rcclass, group
+
+        return None, None, None
 
     def _update_start_lists_for_finals(self):
         # FIXME This is probably not properly converted
@@ -465,7 +488,8 @@ def init_db_path() -> bool:
 
 
 def get_all_results(date: str) -> Dict[Tuple[str, str, str], RaceResults]:
-    database = get_database_with_date(date, convert_to_durations=True)
+    # TODO remove?
+    database = get_database_with_date(date)
     results = {(race, rcclass, group):
                    RaceResults(race, rcclass, group,
                                **database[RESULTS_KEY][race][rcclass][group])
@@ -475,8 +499,9 @@ def get_all_results(date: str) -> Dict[Tuple[str, str, str], RaceResults]:
     return results
 
 
-def get_result(date: str, heat_name: str, rcclass: str, group: str) -> RaceResults:
-    database = get_database_with_date(date, convert_to_durations=True)
+def get_result(date: str, heat_name: str, rcclass: str, group: str) -> Optional[RaceResults]:
+    # TODO remove?
+    database = get_database_with_date(date)
     raw_results = database[RESULTS_KEY].get(heat_name, {}).get(rcclass, {}).get(group, None)
     if raw_results is None:
         return None
@@ -485,12 +510,12 @@ def get_result(date: str, heat_name: str, rcclass: str, group: str) -> RaceResul
 
 def get_all_dates() -> List[str]:
     all_files = sorted(RESULT_FOLDER_PATH.glob("??????.json"), reverse=True)
-    names = []
+    dates = []
     for filename in all_files:
         raw_date = filename.stem
         date = datetime.datetime.strptime(raw_date, DB_DATE_FORMAT).strftime("%Y-%m-%d")
-        names.append(date)
-    return names
+        dates.append(date)
+    return dates
 
 
 def get_todays_filename() -> str:
@@ -518,14 +543,13 @@ def _load_database(filename, convert_to_durations=False) -> Dict:
     return _replace_with_durations(database) if convert_to_durations else database
 
 
-def get_database_with_date(date: str, convert_to_durations=False) -> Dict:
+def get_database_with_date(date: str) -> Database:
     # yeah this may not be the best design, to convert back and forth...
     db_date = datetime.datetime.strptime(date, "%Y-%m-%d").strftime(DB_DATE_FORMAT)
     filename = f"{db_date}.json"
-    database = None
     with open(RESULT_FOLDER_PATH / filename) as f:
-        database = json.load(f)
-    return _replace_with_durations(database) if convert_to_durations else database
+        json_db = json.load(f)
+    return Database(_replace_with_durations(json_db))
 
 
 def _replace_with_durations(database):

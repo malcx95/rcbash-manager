@@ -27,10 +27,10 @@ TABS = list(enumerate([
 
 
 SHORTER_FINAL_NAMES = {
-    rc.EIGHTH_FINAL_NAME: "Åttondel",
-    rc.QUARTER_FINAL_NAME: "Kvart",
-    rc.SEMI_FINAL_NAME: "Semi",
-    rc.FINALS_NAME: "Final",
+    db.EIGHTH_FINAL_NAME: "Åttondel",
+    db.QUARTER_FINAL_NAME: "Kvart",
+    db.SEMI_FINAL_NAME: "Semi",
+    db.FINALS_NAME: "Final",
 }
 
 
