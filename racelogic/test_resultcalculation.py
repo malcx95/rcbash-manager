@@ -401,8 +401,7 @@ class ResultCalculationTests(TestCase):
 
     def test_start_new_race_round_finals_normal(self):
         database = self.test_databases["test_start_new_race_round_finals_normal"]
-        db.save_database(database)
-        # self.setup_fake_input(["y"])
+        database.save()
 
         # TODO make this a parameter
         resultcalculation.MAX_NUM_PARTICIPANTS_PER_GROUP = 6
@@ -422,7 +421,7 @@ class ResultCalculationTests(TestCase):
             }
         }
         new_database = db.get_database()
-        self.assertDictEqual(new_database[START_LISTS_KEY][FINALS_NAME],
+        self.assertDictEqual(new_database.get_start_lists_dict()[FINALS_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made for finals!")
 
@@ -432,7 +431,7 @@ class ResultCalculationTests(TestCase):
         # TODO make this a parameter
         resultcalculation.MAX_NUM_PARTICIPANTS_PER_GROUP = 9
 
-        db.save_database(database)
+        database.save()
 
         resultcalculation.start_new_race_round()
 
@@ -447,13 +446,13 @@ class ResultCalculationTests(TestCase):
             }
         }
         new_database = db.get_database()
-        self.assertDictEqual(new_database[START_LISTS_KEY][FINALS_NAME],
+        self.assertDictEqual(new_database.get_start_lists_dict()[FINALS_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made for finals!")
 
     def test_start_new_race_round_intermediate_normal(self):
         database = self.test_databases["test_start_new_race_round_intermediate_normal"]
-        db.save_database(database)
+        database.save()
 
         resultcalculation.start_new_race_round()
 
@@ -469,14 +468,14 @@ class ResultCalculationTests(TestCase):
             }
         }
         new_database = db.get_database()
-        self.assertDictEqual(new_database[START_LISTS_KEY][QUARTER_FINAL_NAME],
+        self.assertDictEqual(new_database.get_start_lists_dict()[QUARTER_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made for eight finals!")
-        self.assertEqual(new_database[CURRENT_HEAT_KEY], 2, "Heat was not incremented!")
+        self.assertEqual(new_database.current_heat, 2, "Heat was not incremented!")
 
     def test_start_new_race_round_intermediate_only_A_heat(self):
         database = self.test_databases["test_start_new_race_round_intermediate_one_heat"]
-        db.save_database(database)
+        database.save()
 
         resultcalculation.start_new_race_round()
 
@@ -491,69 +490,69 @@ class ResultCalculationTests(TestCase):
             }
         }
         new_database = db.get_database()
-        self.assertDictEqual(new_database[START_LISTS_KEY][QUARTER_FINAL_NAME],
+        self.assertDictEqual(new_database.get_start_lists_dict()[QUARTER_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made for eight finals!")
-        self.assertEqual(new_database[CURRENT_HEAT_KEY], 2, "Heat was not incremented!")
+        self.assertEqual(new_database.current_heat, 2, "Heat was not incremented!")
 
     def test_calculate_cup_points(self):
         database = self.test_databases["test_calculate_cup_points"]
-        db.save_database(database)
+        database.save()
         database = db.get_database()
 
         points, points_per_race = resultcalculation._calculate_cup_points(database)
 
         expected_total_points = {
-            37: 100,
-            22: 92,
-            88: 93,
-            41: 81,
-            27: 77,
-            35: 65,
-            19: 64,
-            65: 64,
-            29: 61,
-            71: 78,
-            11: 90,
-            90: 86,
-            77: 58,
-            45: 70,
-            36: 85,
-            21: 87,
-            89: 47,
-            75: 70,
-            82: 91,
-            46: 64,
-            26: 52
+            db.Driver(37): 100,
+            db.Driver(22): 92,
+            db.Driver(88): 93,
+            db.Driver(41): 81,
+            db.Driver(27): 77,
+            db.Driver(35): 65,
+            db.Driver(19): 64,
+            db.Driver(65): 64,
+            db.Driver(29): 61,
+            db.Driver(71): 78,
+            db.Driver(11): 90,
+            db.Driver(90): 86,
+            db.Driver(77): 58,
+            db.Driver(45): 70,
+            db.Driver(36): 85,
+            db.Driver(21): 87,
+            db.Driver(89): 47,
+            db.Driver(75): 70,
+            db.Driver(82): 91,
+            db.Driver(46): 64,
+            db.Driver(26): 52
         }
         self.assertDictEqual(points, expected_total_points,
                              "Points were calculated incorrectly!")
 
         expected_points_per_race = {
             "2WD": {
-                37: [20, 20, 20, 40],
-                22: [19, 19, 18, 36],
-                88: [18, 18, 19, 38],
-                27: [14, 16, 15, 32],
-                35: [15, 17, 11, 22],
-                29: [12, 11, 12, 26],
-                19: [11, 12, 13, 28],
-                41: [16, 14, 17, 34],
-                71: [17, 15, 16, 30],
-                65: [13, 13, 14, 24],
+                db.Driver(37): [20, 20, 20, 40],
+                db.Driver(22): [19, 19, 18, 36],
+                db.Driver(88): [18, 18, 19, 38],
+                db.Driver(27): [14, 16, 15, 32],
+                db.Driver(35): [15, 17, 11, 22],
+                db.Driver(29): [12, 11, 12, 26],
+                db.Driver(19): [11, 12, 13, 28],
+                db.Driver(41): [16, 14, 17, 34],
+                db.Driver(71): [17, 15, 16, 30],
+                db.Driver(65): [13, 13, 14, 24],
             },
             "4WD": {
-                11: [16, 14, 20, 40],
-                90: [17, 18, 17, 34],
-                45: [13, 19, 16, 22],
-                36: [19, 16, 14, 36],
-                77: [0,  13, 15, 30],
-                89: [0,  11, 10, 26],
-                46: [12, 12, 12, 28],
-                82: [14, 20, 19, 38],
-                21: [20, 17, 18, 32],
-                75: [18, 15, 13, 24],
-                26: [11, 10, 11, 20]
+                db.Driver(11): [16, 14, 20, 40],
+                db.Driver(90): [17, 18, 17, 34],
+                db.Driver(45): [13, 19, 16, 22],
+                db.Driver(36): [19, 16, 14, 36],
+                db.Driver(77): [0,  13, 15, 30],
+                db.Driver(89): [0,  11, 10, 26],
+                db.Driver(46): [12, 12, 12, 28],
+                db.Driver(82): [14, 20, 19, 38],
+                db.Driver(21): [20, 17, 18, 32],
+                db.Driver(75): [18, 15, 13, 24],
+                db.Driver(26): [11, 10, 11, 20]
             }
         }
         for rcclass in expected_points_per_race:

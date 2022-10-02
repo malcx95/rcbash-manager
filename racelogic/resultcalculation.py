@@ -164,49 +164,51 @@ def add_participants() -> Dict[str, Dict[str, List]]:
     return filtered_participants
 
 
-def _should_get_points(group_results, number):
-    if "dns" in group_results and number in group_results["dns"]:
+def _should_get_points(group_results: db.RaceResults, driver: db.Driver) -> bool:
+    if group_results.has_dns() and not group_results.did_driver_start(driver):
         return False
-    return (group_results["manual"] or group_results["num_laps_driven"].get(number, 0) > 0)
+    return group_results.was_manually_entered() or group_results.did_driver_start(driver)
 
 
-def _calculate_points_from_non_finals(results, points):
+def _calculate_points_from_non_finals(results: Dict[str, Dict[str, db.RaceResults]],
+                                      points: Dict[str, Dict[db.Driver, List[int]]]) -> None:
     for rcclass in points:
         # iterate such that we parse A group first
         current_points = 20
         for group in sorted(results[rcclass]):
-            positions = results[rcclass][group]["positions"]
-            for number in positions:
-                if _should_get_points(results[rcclass][group], number):
-                    points[rcclass][number].append(current_points)
+            positions = results[rcclass][group].positions
+            for driver in positions:
+                if _should_get_points(results[rcclass][group], driver):
+                    points[rcclass][driver].append(current_points)
                 else:
-                    points[rcclass][number].append(0)
+                    points[rcclass][driver].append(0)
                 current_points -= 1
 
 
-def _calculate_points_from_finals(results, points):
+def _calculate_points_from_finals(results: Dict[str, Dict[str, db.RaceResults]],
+                                  points: Dict[str, Dict[db.Driver, List[int]]]) -> None:
     drivers_counted = set()
     for rcclass in points:
         # iterate such that we parse A group first
         current_points = 40
         for group in sorted(results[rcclass]):
-            positions = results[rcclass][group]["positions"]
-            for number in positions:
-                if number not in drivers_counted:
-                    drivers_counted.add(number)
-                    if _should_get_points(results[rcclass][group], number):
-                        points[rcclass][number].append(current_points)
+            positions = results[rcclass][group].positions
+            for driver in positions:
+                if driver not in drivers_counted:
+                    drivers_counted.add(driver)
+                    if _should_get_points(results[rcclass][group], driver):
+                        points[rcclass][driver].append(current_points)
                     current_points -= 2
 
 
-def _calculate_cup_points(database) -> Tuple[Dict, Dict]:
+def _calculate_cup_points(database: db.Database) -> Tuple[Dict[db.Driver, int], Dict]:
     points_per_race = {"2WD": defaultdict(list), "4WD": defaultdict(list)}
     for heat_name in db.RACE_ORDER:
         if database.are_all_races_in_round_completed(heat_name):
-            if heat_name not in (QUALIFIERS_NAME, FINALS_NAME) and heat_name in database[RESULTS_KEY]:
-                _calculate_points_from_non_finals(database[RESULTS_KEY][heat_name], points_per_race)
-            elif heat_name == FINALS_NAME:
-                _calculate_points_from_finals(database[RESULTS_KEY][FINALS_NAME], points_per_race)
+            if heat_name not in (db.QUALIFIERS_NAME, db.FINALS_NAME) and database.heat_has_result(heat_name):
+                _calculate_points_from_non_finals(database.get_heat_results(heat_name), points_per_race)
+            elif heat_name == db.FINALS_NAME:
+                _calculate_points_from_finals(database.get_heat_results(heat_name), points_per_race)
 
     return {num: sum(point_list)
             for rcclass in points_per_race
@@ -328,15 +330,18 @@ def _create_start_list_from_qualifiers(groups: Dict[str, List[str]], database: d
     return start_lists, duplicate_drivers
 
 
-def _create_start_list_intermediate_races(groups, database, race):
+def _create_start_list_intermediate_races(database: db.Database, heat_name: str) \
+        -> Tuple[Dict[str, Dict[str, List[db.Driver]]], Set[db.Driver]]:
     start_lists = {"2WD": {}, "4WD": {}}
-    results = database[RESULTS_KEY][race]
+    results = database.get_heat_results(heat_name)
 
     for rcclass in start_lists:
-        group_results = sorted(copy.deepcopy(results[rcclass]).items(), key=lambda k: k[0])
+        # noinspection PyTypeChecker
+        group_results: List[Tuple[str, db.RaceResults]] = \
+            sorted(copy.deepcopy(results[rcclass]).items(), key=lambda k: k[0])
 
         if len(group_results) == 1:
-            start_lists[rcclass]["A"] = group_results[0][1]["positions"]
+            start_lists[rcclass]["A"] = group_results[0][1].positions
 
         else:
             new_start_lists = {}
@@ -344,8 +349,8 @@ def _create_start_list_intermediate_races(groups, database, race):
                 higher_group, higher_results = group_results[i]
                 lower_group, lower_results = group_results[i + 1]
 
-                higher_positions = higher_results["positions"]
-                lower_positions = lower_results["positions"]
+                higher_positions = higher_results.positions
+                lower_positions = lower_results.positions
 
                 higher_slowest = higher_positions.pop()
                 higher_second_slowest = higher_positions.pop()
@@ -390,10 +395,10 @@ def _sort_by_points_and_best_heats(points):
     return sorted(points.items(), key=key_fn)
 
 
-def _create_start_lists_for_finals(database):
+def _create_start_lists_for_finals(database: db.Database) \
+        -> Tuple[Dict[str, Dict[str, List[db.Driver]]], Set[db.Driver]]:
     start_lists = {"2WD": defaultdict(list), "4WD": defaultdict(list)}
     points, points_per_race = _calculate_cup_points(database)
-    semi_results = database[RESULTS_KEY][SEMI_FINAL_NAME]
 
     for rcclass in start_lists:
         highest_points = _sort_by_points_and_best_heats(points_per_race[rcclass])
@@ -415,7 +420,7 @@ def _create_new_start_lists(groups: Dict[str, List[str]], database: db.Database)
     if current_heat == db.QUALIFIERS_NAME:
         return _create_start_list_from_qualifiers(groups, database)
     elif current_heat in (db.EIGHTH_FINAL_NAME, db.QUARTER_FINAL_NAME):
-        return _create_start_list_intermediate_races(groups, database, current_heat)
+        return _create_start_list_intermediate_races(database, current_heat)
     else:
         return _create_start_lists_for_finals(database)
 

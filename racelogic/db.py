@@ -196,6 +196,14 @@ class RaceResults:
     def add_dns(self, driver: Driver) -> None:
         self.dns.append(driver)
 
+    def did_driver_start(self, driver: Driver) -> bool:
+        return driver not in self.dns
+
+    def was_manually_entered(self) -> bool:
+        return self.manual
+
+    def driver_drove_any_laps(self, driver: Driver) -> bool:
+        return self.num_laps_driven.get(driver, 0) > 0
 
 class Database:
 
@@ -284,6 +292,13 @@ class Database:
 
     def get_groups_in_race(self, heat_name: str, rcclass: str) -> List[str]:
         return self.start_lists[heat_name][rcclass].get_groups()
+
+    def get_heat_results(self, heat_name: str) -> Dict[str, Dict[str, RaceResults]]:
+        """
+        Gets all results for a particular heat.
+        Returns {"4WD": {<group>: RaceResults}, "2WD": {...}}
+        """
+        return self.results[heat_name]
 
     def get_current_groups(self) -> Dict[str, List[str]]:
         """
