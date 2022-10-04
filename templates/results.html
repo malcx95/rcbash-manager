@@ -30,7 +30,7 @@
                       </tr>
                     </thead>
                     <tbody>
-                      {% for num in results[heat_name, rcclass, group].positions %}
+                      {% for driver in results[heat_name, rcclass, group].positions %}
                         <tr class="{{ result_table_classes.get(loop.index, '') }}">
                           {% if loop.index == 1 %}
                             <td>&#129351;</td>
@@ -41,8 +41,8 @@
                           {% else %}
                             <td><b>{{ loop.index }}</b></td>
                           {% endif %}
-                          <td>{{ num }}</td>
-                          <td>{{ names[num] }}</td>
+                          <td>{{ driver.number }}</td>
+                          <td>{{ driver.name }}</td>
                         </tr>
                       {% endfor %}
                     </tbody>

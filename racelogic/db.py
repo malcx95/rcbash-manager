@@ -117,7 +117,7 @@ class HeatStartLists:
         }
 
 
-class RaceResults:
+class RaceResult:
 
     def __init__(self,
                  heat_name: str,
@@ -208,6 +208,7 @@ class RaceResults:
     def driver_drove_any_laps(self, driver: Driver) -> bool:
         return self.num_laps_driven.get(driver, 0) > 0
 
+
 class Database:
 
     def __init__(self, json_db: Dict = None):
@@ -217,7 +218,7 @@ class Database:
         self.start_lists: Dict[str, Dict[str, HeatStartLists]] = \
             self._parse_start_lists(json_db[START_LISTS_KEY]) \
             if json_db is not None else {}
-        self.results: Dict[str, Dict[str, Dict[str, RaceResults]]] = \
+        self.results: Dict[str, Dict[str, Dict[str, RaceResult]]] = \
             self._parse_results(json_db[RESULTS_KEY]) \
             if json_db is not None else {}
         self.current_heat: int = json_db[CURRENT_HEAT_KEY] \
@@ -272,7 +273,7 @@ class Database:
                    average_laptimes: List[Tuple[int, Duration]],
                    manual: bool,
                    start_list: List[Driver]) -> None:
-        race_results = RaceResults(
+        race_results = RaceResult(
             heat_name,
             rcclass,
             group,
@@ -290,16 +291,16 @@ class Database:
         if self.get_current_heat() == FINALS_NAME:
             self._update_start_lists_for_finals()
 
-    def get_result(self, heat_name: str, rcclass: str, group: str) -> RaceResults:
+    def get_result(self, heat_name: str, rcclass: str, group: str) -> RaceResult:
         return self.results[heat_name][rcclass][group]
 
     def get_groups_in_race(self, heat_name: str, rcclass: str) -> List[str]:
         return self.start_lists[heat_name][rcclass].get_groups()
 
-    def get_heat_results(self, heat_name: str) -> Optional[Dict[str, Dict[str, RaceResults]]]:
+    def get_heat_results(self, heat_name: str) -> Optional[Dict[str, Dict[str, RaceResult]]]:
         """
         Gets all results for a particular heat. Returns None if it doesn't exist.
-        Returns {"4WD": {<group>: RaceResults}, "2WD": {...}}
+        Returns {"4WD": {<group>: RaceResult}, "2WD": {...}}
         """
         return self.results.get(heat_name)
 
@@ -367,12 +368,23 @@ class Database:
     def group_has_result(self, heat_name: str, rcclass: str, group: str) -> bool:
         return group in self.results[heat_name][rcclass]
 
-    def get_class_results(self, heat_name: str, rcclass: str) -> Dict[str, RaceResults]:
+    def get_class_results(self, heat_name: str, rcclass: str) -> Dict[str, RaceResult]:
         """
         Gets the results for each class.
         Returns a dictionary where each group is mapped to its result.
         """
         return self.results[heat_name][rcclass]
+
+    def get_all_results(self) -> Dict[Tuple[str, str, str], RaceResult]:
+        """
+        Returns a dictionary where (heat_name, rcclass, group) is mapped to
+        each RaceResult.
+        """
+        results = {(heat_name, rcclass, group): self.get_result(heat_name, rcclass, group)
+                   for heat_name in self.results
+                   for rcclass in ("2WD", "4WD")
+                   for group in self.get_groups_in_race(heat_name, rcclass)}
+        return results
 
     def get_heats_with_results(self) -> List[str]:
         return list(self.results.keys())
@@ -405,7 +417,6 @@ class Database:
         return None, None, None
 
     def _update_start_lists_for_finals(self):
-        # FIXME This is probably not properly converted
         for rcclass in ("2WD", "4WD"):
             class_results = self.results[FINALS_NAME][rcclass]
             groups = ("C", "B", "A")
@@ -414,7 +425,6 @@ class Database:
                 if group in class_results:
                     group_winner = class_results[group].positions[0]
                     higher_group = groups[i + 1]
-                    # FIXME like wtf where does this even go? this probably won't work
                     higher_group_start_list = self.start_lists[FINALS_NAME][rcclass].get_start_list(higher_group)
                     if group_winner not in higher_group_start_list:
                         higher_group_start_list.append(group_winner)
@@ -454,12 +464,12 @@ class Database:
         }
 
     def _parse_results(self, json_dict: Dict[str, Dict[str, Dict[str, Dict]]])\
-            -> Dict[str, Dict[str, Dict[str, RaceResults]]]:
+            -> Dict[str, Dict[str, Dict[str, RaceResult]]]:
         return {
             heat_name: {
                 rcclass: {
-                    group_name: RaceResults(heat_name, rcclass, group_name,
-                                            **json_dict[heat_name][rcclass][group_name])
+                    group_name: RaceResult(heat_name, rcclass, group_name,
+                                           **json_dict[heat_name][rcclass][group_name])
                     for group_name in group_results
                 }
                 for rcclass, group_results in heat_results.items()
@@ -485,27 +495,6 @@ def init_db_path() -> bool:
 
     path_exists = path.exists()
     return path_exists
-
-
-def get_all_results(date: str) -> Dict[Tuple[str, str, str], RaceResults]:
-    # TODO remove?
-    database = get_database_with_date(date)
-    results = {(race, rcclass, group):
-                   RaceResults(race, rcclass, group,
-                               **database[RESULTS_KEY][race][rcclass][group])
-               for race in database[RESULTS_KEY]
-               for rcclass in ("2WD", "4WD")
-               for group in database[RESULTS_KEY][race][rcclass]}
-    return results
-
-
-def get_result(date: str, heat_name: str, rcclass: str, group: str) -> Optional[RaceResults]:
-    # TODO remove?
-    database = get_database_with_date(date)
-    raw_results = database[RESULTS_KEY].get(heat_name, {}).get(rcclass, {}).get(group, None)
-    if raw_results is None:
-        return None
-    return RaceResults(heat_name, rcclass, group, **raw_results)
 
 
 def get_all_dates() -> List[str]:

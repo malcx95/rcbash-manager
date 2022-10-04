@@ -164,13 +164,13 @@ def add_participants() -> Dict[str, Dict[str, List]]:
     return filtered_participants
 
 
-def _should_get_points(group_results: db.RaceResults, driver: db.Driver) -> bool:
+def _should_get_points(group_results: db.RaceResult, driver: db.Driver) -> bool:
     if group_results.has_dns() and not group_results.did_driver_start(driver):
         return False
     return group_results.was_manually_entered() or group_results.driver_drove_any_laps(driver)
 
 
-def _calculate_points_from_non_finals(results: Dict[str, Dict[str, db.RaceResults]],
+def _calculate_points_from_non_finals(results: Dict[str, Dict[str, db.RaceResult]],
                                       points: Dict[str, Dict[db.Driver, List[int]]]) -> None:
     for rcclass in points:
         # iterate such that we parse A group first
@@ -185,7 +185,7 @@ def _calculate_points_from_non_finals(results: Dict[str, Dict[str, db.RaceResult
                 current_points -= 1
 
 
-def _calculate_points_from_finals(results: Dict[str, Dict[str, db.RaceResults]],
+def _calculate_points_from_finals(results: Dict[str, Dict[str, db.RaceResult]],
                                   points: Dict[str, Dict[db.Driver, List[int]]]) -> None:
     drivers_counted = set()
     for rcclass in points:
@@ -282,7 +282,7 @@ def _create_start_list_from_qualifiers(groups: Dict[str, List[str]], database: d
     """
     start_lists = {"2WD": {}, "4WD": {}}
 
-    def _group_sort_fn(item: Tuple[str, db.RaceResults]) -> Tuple[int, int]:
+    def _group_sort_fn(item: Tuple[str, db.RaceResult]) -> Tuple[int, int]:
         _, results = item
         positions = results.positions
         first = positions[0]
@@ -293,7 +293,7 @@ def _create_start_list_from_qualifiers(groups: Dict[str, List[str]], database: d
     for rcclass in start_lists:
         # Don't know why the type checker disagree here, but this is the correct type.
         # noinspection PyTypeChecker
-        class_results: List[Tuple[str, db.RaceResults]] = sorted(
+        class_results: List[Tuple[str, db.RaceResult]] = sorted(
             database.get_class_results(db.QUALIFIERS_NAME, rcclass).items(),
             key=_group_sort_fn,
             reverse=True
@@ -329,7 +329,7 @@ def _create_start_list_intermediate_races(database: db.Database, heat_name: str)
 
     for rcclass in start_lists:
         # noinspection PyTypeChecker
-        group_results: List[Tuple[str, db.RaceResults]] = \
+        group_results: List[Tuple[str, db.RaceResult]] = \
             sorted(copy.deepcopy(results[rcclass]).items(), key=lambda k: k[0])
 
         if len(group_results) == 1:
@@ -642,8 +642,7 @@ def show_current_heat_start_list(database: db.Database = None) -> None:
     print("^^ Copied to clipboard")
 
 
-def get_all_start_lists(date) -> Tuple[Iterable[Tuple[str, List]], Dict[str, Dict]]:
-    database = db.get_database_with_date(date)
+def get_all_start_lists(database) -> Tuple[Iterable[Tuple[str, List]], Dict[str, Dict]]:
     start_lists = []
     marshals = {}
     current_heat_index = database.current_heat

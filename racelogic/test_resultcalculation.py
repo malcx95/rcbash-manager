@@ -411,7 +411,7 @@ class ResultCalculationTests(TestCase):
         # TODO validate these
         expected_new_start_lists = {
             "2WD": {
-                "A": [37, 22, 88, 27, 41], # 1 person will be missing from each higher heat
+                "A": [37, 22, 88, 27, 41],  # 1 person will be missing from each higher heat
                 "B": [65, 62, 19, 71]
             },
             "4WD": {

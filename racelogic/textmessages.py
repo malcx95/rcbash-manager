@@ -88,7 +88,7 @@ START_MESSAGE_TEMPLATE = \
 Gör er redo och lycka till! {race_flag}"""
 
 
-def get_result_text_message(results: db.RaceResults, rcclass: str, group: str, race: str):
+def get_result_text_message(results: db.RaceResult, rcclass: str, group: str, race: str):
 
     def create_position_line(index, driver: db.Driver):
         name = driver.name

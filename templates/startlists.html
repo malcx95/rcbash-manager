@@ -29,11 +29,11 @@
                 </tr>
               </thead>
               <tbody>
-                {% for num in group_list %}
+                {% for driver in group_list %}
                   <tr>
                     <td><b>{{ loop.index }}</b></td>
-                    <td>{{ num }}</td>
-                    <td>{{ names[num] }}</td>
+                    <td>{{ driver.number }}</td>
+                    <td>{{ driver.name }}</td>
                   </tr>
                 {% endfor %}
               </tbody>
@@ -45,8 +45,8 @@
               </strong>
             </p>
             <p>
-              {% for num in marshals[heat_name][rcclass][group][2] %}
-                <span class="nowrap"><strong>{{ loop.index }}.</strong> {{ names[num] }}</span>
+              {% for driver in marshals[heat_name][rcclass][group][2] %}
+                <span class="nowrap"><strong>{{ loop.index }}.</strong> {{ driver.name }}</span>
               {% endfor %}
             </p>
             </div>

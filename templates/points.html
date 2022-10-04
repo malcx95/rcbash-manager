@@ -22,11 +22,11 @@
           </tr>
         </thead>
         <tbody>
-          {% for num, driver_points, driver_points_per_race in points_per_class %}
+          {% for driver, driver_points, driver_points_per_race in points_per_class %}
             <tr>
               <td><b>{{ loop.index }}</b></td>
-              <td>{{ num }}</td>
-              <td>{{ names[num] }}</td>
+              <td>{{ driver.number }}</td>
+              <td>{{ driver.name }}</td>
               {% for p in driver_points_per_race %}
                 {% if p is none %}
                   <td></td>
