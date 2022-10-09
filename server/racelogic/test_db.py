@@ -6,7 +6,7 @@ import db
 import os
 
 
-TEST_DATABASE_PATH = "./testdata/testdatabases"
+TEST_DATABASE_PATH = "testdata/testdatabases"
 
 
 class DBTests(TestCase):

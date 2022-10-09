@@ -1,7 +1,7 @@
 from typing import Dict, List, Tuple
 
 try:
-    from racelogic.db import HeatStartLists
+    from server.racelogic.db import HeatStartLists
 except ImportError:
     from db import HeatStartLists
 
