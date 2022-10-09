@@ -5,17 +5,15 @@ import htmlparsing
 import resultcalculation
 from duration import Duration
 from db import QUALIFIERS_NAME, START_LISTS_KEY, RESULTS_KEY, \
-    CURRENT_HEAT_KEY, ALL_PARTICIPANTS_KEY, EIGHTH_FINAL_NAME, QUARTER_FINAL_NAME, FINALS_NAME, CURRENT_HEAT_KEY
+    ALL_PARTICIPANTS_KEY, QUARTER_FINAL_NAME, FINALS_NAME, CURRENT_HEAT_KEY
 
-
-import json
 import os
 from pathlib import Path
 from pyfakefs.fake_filesystem_unittest import TestCase
 import unittest.mock as mock
 
 
-TEST_DATABASE_PATH = "./testdata/testdatabases"
+TEST_DATABASE_PATH = "testdata/testdatabases"
 
 
 class ResultCalculationTests(TestCase):
@@ -546,8 +544,8 @@ class ResultCalculationTests(TestCase):
                 db.Driver(90): [17, 18, 17, 34],
                 db.Driver(45): [13, 19, 16, 22],
                 db.Driver(36): [19, 16, 14, 36],
-                db.Driver(77): [0,  13, 15, 30],
-                db.Driver(89): [0,  11, 10, 26],
+                db.Driver(77): [0, 13, 15, 30],
+                db.Driver(89): [0, 11, 10, 26],
                 db.Driver(46): [12, 12, 12, 28],
                 db.Driver(82): [14, 20, 19, 38],
                 db.Driver(21): [20, 17, 18, 32],

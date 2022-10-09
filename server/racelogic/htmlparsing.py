@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import List, Tuple, Dict
 
 try:
-    from racelogic.duration import Duration
+    from server.racelogic.duration import Duration
 except ImportError:
     from duration import Duration
 

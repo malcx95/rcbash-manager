@@ -2,14 +2,11 @@ from collections import defaultdict
 from typing import List, Dict, Tuple, Iterable, Callable, Any, Set, Optional
 
 try:
-    from racelogic.names import NAMES
-    from racelogic.duration import Duration
+    from server.racelogic.names import NAMES
+    from server.racelogic.duration import Duration
 
-    import racelogic.filelocation
-    import racelogic.htmlparsing as htmlparsing
-    import racelogic.textmessages as textmessages
-    import racelogic.util as util
-    import racelogic.db as db
+    from server.racelogic import htmlparsing, textmessages, db
+    import server.racelogic.util as util
 
 except ImportError:
     from names import NAMES

@@ -1,8 +1,8 @@
 from typing import List, Dict, Tuple, Iterable, Any, Optional
 
 try:
-    from racelogic.duration import Duration
-    import racelogic.names as names
+    from server.racelogic.duration import Duration
+    from server.racelogic import names
 except ImportError:
     from duration import Duration
     import names

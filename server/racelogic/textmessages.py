@@ -1,14 +1,13 @@
 from typing import Tuple, Dict, List
 
 try:
-    from racelogic.duration import Duration
-    from racelogic.db import HeatStartLists
+    from server.racelogic.duration import Duration
+    from server.racelogic.db import HeatStartLists
 
-    import racelogic.htmlparsing
-    import racelogic.names
-    import racelogic.util as util
-    import racelogic.filelocation
-    import racelogic.db as db
+    from server.racelogic import db
+    import server.racelogic.names
+    import server.racelogic.util as util
+    import server.racelogic.filelocation
 except ImportError:
     # i'm sorry this is ugly
     from duration import Duration

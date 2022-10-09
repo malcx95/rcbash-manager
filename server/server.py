@@ -1,10 +1,8 @@
 import flask
 import json
 
-import racelogic.db
 import racelogic.resultcalculation as rc
 import racelogic.db as db
-from racelogic.names import NAMES
 
 from flask import Flask, request
 from pathlib import Path
@@ -54,7 +52,7 @@ def _render_page(active_index: int, selected_date: str) -> str:
             for rcclass in ("2WD", "4WD")
         }
 
-    race_order = [SHORTER_FINAL_NAMES[name] for name in racelogic.db.NON_QUALIFIER_RACE_ORDER]
+    race_order = [SHORTER_FINAL_NAMES[name] for name in db.NON_QUALIFIER_RACE_ORDER]
 
     return flask.render_template(f"{active_tab}.html",
                                  tabs=TABS,
@@ -116,7 +114,7 @@ def _sort_points(all_points, points_per_race, rcclass):
 
 
 def _pad_list_with_nones(points_list):
-    return points_list + [None]*(len(racelogic.db.NON_QUALIFIER_RACE_ORDER) - len(points_list))
+    return points_list + [None]*(len(db.NON_QUALIFIER_RACE_ORDER) - len(points_list))
 
 
 # TODO remove
@@ -145,21 +143,21 @@ def points_default():
 
 # TODO could you do the following three endpoints as a macro?
 @app.get(f"/{START_LISTS_TAB}/<date>")
-def start_lists(date):
+def start_lists_page(date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{START_LISTS_TAB}")
     return _render_page(active_index=0, selected_date=date)
 
 
 @app.get(f"/{RESULTS_TAB}/<date>")
-def results(date):
+def results_page(date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{RESULTS_TAB}")
     return _render_page(active_index=1, selected_date=date)
 
 
 @app.get(f"/{RESULTS_TAB}/<date>/race")
-def results_details(date):
+def results_details_page(date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{RESULTS_TAB}")
 
@@ -170,7 +168,7 @@ def results_details(date):
     database = db.get_database_with_date(date)
 
     # TODO make 404 page
-    if heat not in racelogic.db.RACE_ORDER:
+    if heat not in db.RACE_ORDER:
         return flask.redirect(f"/{RESULTS_TAB}")
     if rcclass not in ("2WD", "4WD"):
         return flask.redirect(f"/{RESULTS_TAB}")
@@ -185,7 +183,7 @@ def results_details(date):
 
 
 @app.get(f"/{POINTS_TAB}/<date>")
-def points(date):
+def points_page(date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{POINTS_TAB}")
     return _render_page(active_index=2, selected_date=date)
