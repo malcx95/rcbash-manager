@@ -11,3 +11,26 @@ login_manager = LoginManager()
 def create_app():
     app = Flask(__name__, instance_relative_config=False)
     # TODO du är här
+    app.config.from_object("config.Config")
+
+    # Initialize Plugins
+    db.init_app(app)
+    login_manager.init_app(app)
+
+    with app.app_context():
+        from . import server
+        from . import auth
+        #from .assets import compile_assets
+
+        # Register Blueprints
+        app.register_blueprint(server.main_bp)
+        app.register_blueprint(auth.auth_bp)
+
+        # Create Database Models
+        db.create_all()
+
+        # Compile static assets
+        # if app.config['FLASK_ENV'] == 'development':
+        #     compile_assets(app)
+
+        return app

@@ -1,13 +1,20 @@
 import flask
 import json
 
-import racelogic.resultcalculation as rc
-import racelogic.db as db
+import server.racelogic.resultcalculation as rc
+import server.racelogic.db as db
 
-from flask import Flask, request
+from flask import Flask, request, Blueprint
+from flask_login import login_required, logout_user, current_user, login_user
 from pathlib import Path
 
-app = Flask(__name__)
+
+main_bp = Blueprint(
+    "main_bp",
+    __name__,
+    template_folder="templates",
+    static_folder="static"
+)
 
 IS_PRODUCTION = Path("/home/malcolm/isproduction").exists()
 
@@ -118,45 +125,45 @@ def _pad_list_with_nones(points_list):
 
 
 # TODO remove
-@app.get("/")
+@main_bp.get("/")
 def index():
     return flask.redirect("/startlists")
 
 
-@app.get(f"/{START_LISTS_TAB}")
+@main_bp.get(f"/{START_LISTS_TAB}")
 def start_lists_default():
     latest = db.get_all_dates()[0]
     return flask.redirect(f"/{START_LISTS_TAB}/{latest}")
 
 
-@app.get(f"/{RESULTS_TAB}")
+@main_bp.get(f"/{RESULTS_TAB}")
 def results_default():
     latest = db.get_all_dates()[0]
     return flask.redirect(f"/{RESULTS_TAB}/{latest}")
 
 
-@app.get(f"/{POINTS_TAB}")
+@main_bp.get(f"/{POINTS_TAB}")
 def points_default():
     latest = db.get_all_dates()[0]
     return flask.redirect(f"/{POINTS_TAB}/{latest}")
 
 
 # TODO could you do the following three endpoints as a macro?
-@app.get(f"/{START_LISTS_TAB}/<date>")
+@main_bp.get(f"/{START_LISTS_TAB}/<date>")
 def start_lists_page(date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{START_LISTS_TAB}")
     return _render_page(active_index=0, selected_date=date)
 
 
-@app.get(f"/{RESULTS_TAB}/<date>")
+@main_bp.get(f"/{RESULTS_TAB}/<date>")
 def results_page(date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{RESULTS_TAB}")
     return _render_page(active_index=1, selected_date=date)
 
 
-@app.get(f"/{RESULTS_TAB}/<date>/race")
+@main_bp.get(f"/{RESULTS_TAB}/<date>/race")
 def results_details_page(date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{RESULTS_TAB}")
@@ -182,17 +189,17 @@ def results_details_page(date):
     return _render_individual_result_page(date, result)
 
 
-@app.get(f"/{POINTS_TAB}/<date>")
+@main_bp.get(f"/{POINTS_TAB}/<date>")
 def points_page(date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{POINTS_TAB}")
     return _render_page(active_index=2, selected_date=date)
 
 
-@app.get("/<path:path>")
+@main_bp.get("/<path:path>")
 def get_static(path):
     return flask.send_from_directory("static", path)
 
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=not IS_PRODUCTION)
+# if __name__ == "__main__":
+#     main_bp.run(host="0.0.0.0", debug=not IS_PRODUCTION)

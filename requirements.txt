@@ -4,5 +4,8 @@ uwsgi
 flask-login
 flask-sqlalchemy
 flask-wtf
+email_validator
 
 pyfakefs~=4.7.0
+Werkzeug~=2.2.2
+WTForms~=3.0.1
