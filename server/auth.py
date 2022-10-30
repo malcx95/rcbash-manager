@@ -2,7 +2,7 @@
 from flask import Blueprint, redirect, render_template, flash, request, session, url_for
 from flask_login import login_required, logout_user, current_user, login_user
 from .forms import LoginForm, SignupForm
-from .models import db, User
+from .models import db, User, Role, ADMIN_NAME, RACER_NAME
 from . import login_manager
 
 
@@ -57,11 +57,13 @@ def signup():
     if form.validate_on_submit():
         existing_user = User.query.filter_by(email=form.email.data).first()
         if existing_user is None:
+            racer_role = db.session.query(Role).filter_by(name=RACER_NAME).first()
             user = User(
                 name=form.name.data,
                 email=form.email.data,
             )
             user.set_password(form.password.data)
+            user.roles = [racer_role]  # users are regular racers by default
             db.session.add(user)
             db.session.commit()  # Create new user
             login_user(user)  # Log in as newly created user
