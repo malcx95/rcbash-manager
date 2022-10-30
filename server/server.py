@@ -22,12 +22,18 @@ START_LISTS_TAB = "startlists"
 RESULTS_TAB = "results"
 POINTS_TAB = "points"
 
+LOGOUT_URL = "logout"
+
 RESULT_TABLE_CLASSES = {1: "winner", 2: "second", 3: "third"}
 
 TABS = list(enumerate([
     (START_LISTS_TAB, "Startordningar", "list"),
     (RESULTS_TAB, "Resultat", "award"),
     (POINTS_TAB, "Poängställning", "bar-chart"),
+]))
+
+AUTHENTICATED_TABS = list(enumerate([
+    (LOGOUT_URL, "Logga ut", "log-out"),
 ]))
 
 
@@ -40,6 +46,7 @@ SHORTER_FINAL_NAMES = {
 
 
 def _render_page(active_index: int, selected_date: str) -> str:
+    is_authenticated = current_user.is_authenticated
     db_dates = db.get_all_dates()
     _, (active_tab, active_tab_readable, active_tab_icon) = TABS[active_index]
 
@@ -63,6 +70,7 @@ def _render_page(active_index: int, selected_date: str) -> str:
 
     return flask.render_template(f"{active_tab}.html",
                                  tabs=TABS,
+                                 authenticated_tabs=AUTHENTICATED_TABS,
                                  db_dates=enumerate(db_dates),
                                  active_tab=active_tab,
                                  active_tab_readable=active_tab_readable,
@@ -74,7 +82,9 @@ def _render_page(active_index: int, selected_date: str) -> str:
                                  result_table_classes=RESULT_TABLE_CLASSES,
                                  points=points,
                                  race_order=race_order,
-                                 active_index=active_index)
+                                 active_index=active_index,
+                                 is_authenticated=is_authenticated,
+                                 )
 
 
 def _render_individual_result_page(selected_date: str, result: db.RaceResult) -> str:
@@ -128,6 +138,12 @@ def _pad_list_with_nones(points_list):
 @main_bp.get("/")
 def index():
     return flask.redirect("/startlists")
+
+
+@main_bp.route(f"/{LOGOUT_URL}")
+def logout():
+    logout_user()
+    return flask.redirect(flask.url_for("main_bp.index"))
 
 
 @main_bp.get(f"/{START_LISTS_TAB}")
@@ -200,6 +216,3 @@ def points_page(date):
 def get_static(path):
     return flask.send_from_directory("static", path)
 
-
-# if __name__ == "__main__":
-#     main_bp.run(host="0.0.0.0", debug=not IS_PRODUCTION)

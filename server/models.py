@@ -54,7 +54,7 @@ class User(UserMixin, db.Model):
 
     def check_password(self, password):
         """Check hashed password."""
-        return check_password_hash(self.password, self.pollute(password))
+        return check_password_hash(self.password, self._pollute(password))
 
     @staticmethod
     def _pollute(password):
