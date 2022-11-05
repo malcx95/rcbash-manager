@@ -5,7 +5,7 @@ try:
     from server.racelogic.names import NAMES
     from server.racelogic.duration import Duration
 
-    from server.racelogic import htmlparsing, textmessages, db
+    from server.racelogic import htmlparsing, textmessages, raceday as rd
     import server.racelogic.util as util
 
 except ImportError:
@@ -16,7 +16,7 @@ except ImportError:
     import htmlparsing
     import textmessages
     import util
-    import db
+    import raceday as rd
 
 import math
 import argparse
@@ -34,7 +34,7 @@ def _input(text):
 
 
 def start_new_race_day():
-    db_exists_already = db.init_db_path()
+    db_exists_already = rd.init_raceday_path()
 
     if db_exists_already:
         print("There is already an ongoing race day for today!")
@@ -46,8 +46,8 @@ def start_new_race_day():
             elif ans == "n":
                 return False
 
-    database = db.create_empty_database()
-    database.save()
+    raceday = rd.create_empty_raceday()
+    raceday.save()
 
     print("New race day created for today!")
 
@@ -161,14 +161,14 @@ def add_participants() -> Dict[str, Dict[str, List]]:
     return filtered_participants
 
 
-def _should_get_points(group_results: db.RaceResult, driver: db.Driver) -> bool:
+def _should_get_points(group_results: rd.RaceResult, driver: rd.Driver) -> bool:
     if group_results.has_dns() and not group_results.did_driver_start(driver):
         return False
     return group_results.was_manually_entered() or group_results.driver_drove_any_laps(driver)
 
 
-def _calculate_points_from_non_finals(results: Dict[str, Dict[str, db.RaceResult]],
-                                      points: Dict[str, Dict[db.Driver, List[int]]]) -> None:
+def _calculate_points_from_non_finals(results: Dict[str, Dict[str, rd.RaceResult]],
+                                      points: Dict[str, Dict[rd.Driver, List[int]]]) -> None:
     for rcclass in points:
         # iterate such that we parse A group first
         current_points = 20
@@ -182,8 +182,8 @@ def _calculate_points_from_non_finals(results: Dict[str, Dict[str, db.RaceResult
                 current_points -= 1
 
 
-def _calculate_points_from_finals(results: Dict[str, Dict[str, db.RaceResult]],
-                                  points: Dict[str, Dict[db.Driver, List[int]]]) -> None:
+def _calculate_points_from_finals(results: Dict[str, Dict[str, rd.RaceResult]],
+                                  points: Dict[str, Dict[rd.Driver, List[int]]]) -> None:
     drivers_counted = set()
     for rcclass in points:
         # iterate such that we parse A group first
@@ -198,14 +198,14 @@ def _calculate_points_from_finals(results: Dict[str, Dict[str, db.RaceResult]],
                     current_points -= 2
 
 
-def _calculate_cup_points(database: db.Database) -> Tuple[Dict[db.Driver, int], Dict[str, Dict[db.Driver, List[int]]]]:
+def _calculate_cup_points(raceday: rd.Raceday) -> Tuple[Dict[rd.Driver, int], Dict[str, Dict[rd.Driver, List[int]]]]:
     points_per_race = {"2WD": defaultdict(list), "4WD": defaultdict(list)}
-    for heat_name in db.RACE_ORDER:
-        if database.are_all_races_in_round_completed(heat_name):
-            if heat_name not in (db.QUALIFIERS_NAME, db.FINALS_NAME) and database.heat_has_result(heat_name):
-                _calculate_points_from_non_finals(database.get_heat_results(heat_name), points_per_race)
-            elif heat_name == db.FINALS_NAME:
-                _calculate_points_from_finals(database.get_heat_results(heat_name), points_per_race)
+    for heat_name in rd.RACE_ORDER:
+        if raceday.are_all_races_in_round_completed(heat_name):
+            if heat_name not in (rd.QUALIFIERS_NAME, rd.FINALS_NAME) and raceday.heat_has_result(heat_name):
+                _calculate_points_from_non_finals(raceday.get_heat_results(heat_name), points_per_race)
+            elif heat_name == rd.FINALS_NAME:
+                _calculate_points_from_finals(raceday.get_heat_results(heat_name), points_per_race)
 
     return {num: sum(point_list)
             for rcclass in points_per_race
@@ -217,15 +217,15 @@ def create_qualifiers():
     if not started:
         return
 
-    database = db.get_database()
+    raceday = rd.get_raceday()
 
     participants = add_participants()
     all_participants = _get_all_participants(participants)
 
-    database.set_all_participants(all_participants)
-    database.set_first_qualifiers(participants)
+    raceday.set_all_participants(all_participants)
+    raceday.set_first_qualifiers(participants)
 
-    database.save()
+    raceday.save()
 
 
 def _enter_new_groups() -> Dict[str, List[str]]:
@@ -255,7 +255,7 @@ def _select_from_list(options: List[Any], message: str, element_format_fn: Calla
     return options[int(ans) - 1]
 
 
-def _create_almost_equal_partitions(drivers: List[db.Driver], num_partitions: int) -> List[List[db.Driver]]:
+def _create_almost_equal_partitions(drivers: List[rd.Driver], num_partitions: int) -> List[List[rd.Driver]]:
     if len(drivers) % num_partitions == 0:
         partitions = []
         partition_size = len(drivers) // num_partitions
@@ -268,8 +268,8 @@ def _create_almost_equal_partitions(drivers: List[db.Driver], num_partitions: in
             _create_almost_equal_partitions(drivers[first_partition_size:], num_partitions - 1)
 
 
-def _create_start_list_from_qualifiers(groups: Dict[str, List[str]], database: db.Database) \
-        -> Tuple[Dict[str, Dict[str, List[db.Driver]]], Set[db.Driver]]:
+def _create_start_list_from_qualifiers(groups: Dict[str, List[str]], raceday: rd.Raceday) \
+        -> Tuple[Dict[str, Dict[str, List[rd.Driver]]], Set[rd.Driver]]:
     """
     Creates the new start lists based on qualifiers results.
 
@@ -279,26 +279,26 @@ def _create_start_list_from_qualifiers(groups: Dict[str, List[str]], database: d
     """
     start_lists = {"2WD": {}, "4WD": {}}
 
-    def _group_sort_fn(item: Tuple[str, db.RaceResult]) -> Tuple[int, int]:
+    def _group_sort_fn(item: Tuple[str, rd.RaceResult]) -> Tuple[int, int]:
         _, results = item
         positions = results.positions
         first = positions[0]
         return results.num_laps_driven[first], -results.total_times[first].milliseconds
 
-    added_drivers: Set[db.Driver] = set()
-    duplicate_drivers: Set[db.Driver] = set()
+    added_drivers: Set[rd.Driver] = set()
+    duplicate_drivers: Set[rd.Driver] = set()
     for rcclass in start_lists:
         # Don't know why the type checker disagree here, but this is the correct type.
         # noinspection PyTypeChecker
-        class_results: List[Tuple[str, db.RaceResult]] = sorted(
-            database.get_class_results(db.QUALIFIERS_NAME, rcclass).items(),
+        class_results: List[Tuple[str, rd.RaceResult]] = sorted(
+            raceday.get_class_results(rd.QUALIFIERS_NAME, rcclass).items(),
             key=_group_sort_fn,
             reverse=True
         )
 
         class_positions = [copy.deepcopy(results.positions) for _, results in class_results]
 
-        all_positions: List[db.Driver] = []
+        all_positions: List[rd.Driver] = []
         curr_heat = 0
         while any(class_positions):
             if len(class_positions[curr_heat]):
@@ -319,14 +319,14 @@ def _create_start_list_from_qualifiers(groups: Dict[str, List[str]], database: d
     return start_lists, duplicate_drivers
 
 
-def _create_start_list_intermediate_races(database: db.Database, heat_name: str) \
-        -> Tuple[Dict[str, Dict[str, List[db.Driver]]], Set[db.Driver]]:
+def _create_start_list_intermediate_races(raceday: rd.Raceday, heat_name: str) \
+        -> Tuple[Dict[str, Dict[str, List[rd.Driver]]], Set[rd.Driver]]:
     start_lists = {"2WD": {}, "4WD": {}}
-    results = database.get_heat_results(heat_name)
+    results = raceday.get_heat_results(heat_name)
 
     for rcclass in start_lists:
         # noinspection PyTypeChecker
-        group_results: List[Tuple[str, db.RaceResult]] = \
+        group_results: List[Tuple[str, rd.RaceResult]] = \
             sorted(copy.deepcopy(results[rcclass]).items(), key=lambda k: k[0])
 
         if len(group_results) == 1:
@@ -384,10 +384,10 @@ def _sort_by_points_and_best_heats(points):
     return sorted(points.items(), key=key_fn)
 
 
-def _create_start_lists_for_finals(database: db.Database) \
-        -> Tuple[Dict[str, Dict[str, List[db.Driver]]], Set[db.Driver]]:
+def _create_start_lists_for_finals(raceday: rd.Raceday) \
+        -> Tuple[Dict[str, Dict[str, List[rd.Driver]]], Set[rd.Driver]]:
     start_lists = {"2WD": defaultdict(list), "4WD": defaultdict(list)}
-    points, points_per_race = _calculate_cup_points(database)
+    points, points_per_race = _calculate_cup_points(raceday)
 
     for rcclass in start_lists:
         highest_points = _sort_by_points_and_best_heats(points_per_race[rcclass])
@@ -403,51 +403,51 @@ def _create_start_lists_for_finals(database: db.Database) \
     return start_lists, _remove_and_return_duplicate_drivers(start_lists)
 
 
-def _create_new_start_lists(groups: Dict[str, List[str]], database: db.Database) \
-        -> Tuple[Dict[str, Dict[str, List[db.Driver]]], Set[db.Driver]]:
-    current_heat = database.get_current_heat()
-    if current_heat == db.QUALIFIERS_NAME:
-        return _create_start_list_from_qualifiers(groups, database)
-    elif current_heat in (db.EIGHTH_FINAL_NAME, db.QUARTER_FINAL_NAME):
-        return _create_start_list_intermediate_races(database, current_heat)
+def _create_new_start_lists(groups: Dict[str, List[str]], raceday: rd.Raceday) \
+        -> Tuple[Dict[str, Dict[str, List[rd.Driver]]], Set[rd.Driver]]:
+    current_heat = raceday.get_current_heat()
+    if current_heat == rd.QUALIFIERS_NAME:
+        return _create_start_list_from_qualifiers(groups, raceday)
+    elif current_heat in (rd.EIGHTH_FINAL_NAME, rd.QUARTER_FINAL_NAME):
+        return _create_start_list_intermediate_races(raceday, current_heat)
     else:
-        return _create_start_lists_for_finals(database)
+        return _create_start_lists_for_finals(raceday)
 
 
 def start_new_race_round():
-    database = db.get_database()
-    current_heat = database.get_current_heat()
-    if not database.are_all_races_in_round_completed(current_heat):
+    raceday = rd.get_raceday()
+    current_heat = raceday.get_current_heat()
+    if not raceday.are_all_races_in_round_completed(current_heat):
         print("Can't start new round yet! Not all races are completed!")
         return
 
-    groups = database.get_current_groups()
+    groups = raceday.get_current_groups()
 
-    if database.get_current_heat() == db.QUALIFIERS_NAME:
+    if raceday.get_current_heat() == rd.QUALIFIERS_NAME:
         print(f"Current groups are 2WD {', '.join(groups['2WD'])} and 4WD {', '.join(groups['4WD'])}")
         while not _confirm_yes_no("Do you want to use these groups?"):
             groups = _enter_new_groups()
             print(f"New groups are 2WD {', '.join(groups['2WD'])} and 4WD {', '.join(groups['4WD'])}")
 
-    new_start_lists, duplicate_drivers = _create_new_start_lists(groups, database)
+    new_start_lists, duplicate_drivers = _create_new_start_lists(groups, raceday)
 
-    database.increment_current_heat()
-    database.set_new_start_lists(database.get_current_heat(), new_start_lists)
+    raceday.increment_current_heat()
+    raceday.set_new_start_lists(raceday.get_current_heat(), new_start_lists)
 
-    show_current_heat_start_list(database)
+    show_current_heat_start_list(raceday)
 
     if duplicate_drivers:
         print(f"Warning: Driver(s) {', '.join(str(n) for n in duplicate_drivers)} may have been in the wrong heat.")
         if not _confirm_yes_no("Do you want to use these start lists anyway?"):
             return
-    database.save()
+    raceday.save()
 
 
-def _get_next_race(database: db.Database) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[int]]:
-    heat_name = database.get_current_heat()
-    heat_start_lists = database.get_start_lists_for_heat(heat_name)
-    current_results = database.get_heat_results(heat_name)
-    for class_order_index, (rcclass, group) in enumerate(db.CLASS_ORDER[heat_name]):
+def _get_next_race(raceday: rd.Raceday) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[int]]:
+    heat_name = raceday.get_current_heat()
+    heat_start_lists = raceday.get_start_lists_for_heat(heat_name)
+    current_results = raceday.get_heat_results(heat_name)
+    for class_order_index, (rcclass, group) in enumerate(rd.CLASS_ORDER[heat_name]):
         if not heat_start_lists[rcclass].has_group(group):
             continue
         if current_results is None or group not in current_results[rcclass]:
@@ -463,7 +463,7 @@ def _read_results():
 
 
 def add_new_result(drivers_to_exclude=None):
-    database = db.get_database()
+    raceday = rd.get_raceday()
     parser = _read_results()
 
     total_times = htmlparsing.get_total_times(parser)
@@ -472,8 +472,8 @@ def add_new_result(drivers_to_exclude=None):
     best_laptimes = htmlparsing.get_best_laptimes(parser)
     average_laptimes = htmlparsing.get_average_laptimes(total_times, num_laps_driven)
 
-    race_participants = db.number_list_to_driver_list(htmlparsing.get_race_participants(parser))
-    race, rcclass, group, start_list = database.find_relevant_race(race_participants)
+    race_participants = rd.number_list_to_driver_list(htmlparsing.get_race_participants(parser))
+    race, rcclass, group, start_list = raceday.find_relevant_race(race_participants)
 
     extra_participants = set(race_participants) - set(start_list)
     if extra_participants:
@@ -503,22 +503,22 @@ def add_new_result(drivers_to_exclude=None):
         print("Please manually enter the result using the --manual flag")
         return
 
-    if database.result_exists(race, rcclass, group):
+    if raceday.result_exists(race, rcclass, group):
         print("This race already has a previous result, which will be overwritten.")
         if not _confirm_yes_no():
             return
-        elif race == db.FINALS_NAME:
+        elif race == rd.FINALS_NAME:
             print("Please manually remove the old winner from the next start list before doing so!")
             if not _confirm_yes_no("Have you done that?"):
                 return
 
-    database.add_result(race, rcclass, group,
+    raceday.add_result(race, rcclass, group,
                         positions, num_laps_driven, total_times,
                         best_laptimes, average_laptimes, False, start_list)
 
-    database.save()
+    raceday.save()
 
-    results_text = textmessages.get_result_text_message(database.get_result(race, rcclass, group),
+    results_text = textmessages.get_result_text_message(raceday.get_result(race, rcclass, group),
                                                         rcclass, group, race)
 
     clipboard.copy(results_text)
@@ -529,19 +529,19 @@ def add_new_result(drivers_to_exclude=None):
 
 def add_new_result_manually():
     # FIXME this need to be reworked, too much is duplicated
-    database = db.get_database()
-    race = database.get_current_heat()
+    raceday = rd.get_raceday()
+    race = raceday.get_current_heat()
 
     race_options = [(rcclass, group)
-                    for rcclass in ("2WD", "4WD") for group in database.get_groups_in_race(race, rcclass)]
+                    for rcclass in ("2WD", "4WD") for group in raceday.get_groups_in_race(race, rcclass)]
     rcclass, group = _select_from_list(
         race_options, "Select which race to enter manually.", lambda e: " ".join(e))
 
-    if database.result_exists(race, rcclass, group):
+    if raceday.result_exists(race, rcclass, group):
         print("This race already has a previous result, which will be overwritten.")
         if not _confirm_yes_no():
             return
-        elif race == db.FINALS_NAME:
+        elif race == rd.FINALS_NAME:
             print("Please manually remove the old winner from the next start list before doing so!")
             if not _confirm_yes_no("Have you done that?"):
                 return
@@ -556,7 +556,7 @@ def add_new_result_manually():
 
     num_laps_driven = {}
     total_times = {}
-    if race == db.QUALIFIERS_NAME:
+    if race == rd.QUALIFIERS_NAME:
         for number in positions:
             num_laps = _enter_num_laps(number)
             total_time = _enter_total_time(number)
@@ -564,8 +564,8 @@ def add_new_result_manually():
             num_laps_driven[number] = num_laps
             total_times[number] = total_time
 
-    race_participants = db.number_list_to_driver_list(positions)
-    race, rcclass, group, start_list = database.find_relevant_race(race_participants)
+    race_participants = rd.number_list_to_driver_list(positions)
+    race, rcclass, group, start_list = raceday.find_relevant_race(race_participants)
 
     drivers_to_exclude = []
     extra_participants = set(race_participants) - set(start_list)
@@ -581,13 +581,13 @@ def add_new_result_manually():
             del num_laps_driven[driver.number]
         positions.remove(driver.number)
 
-    database.add_result(race, rcclass, group,
+    raceday.add_result(race, rcclass, group,
                         positions, num_laps_driven, total_times,
                         [], [], True, start_list)
 
-    database.save()
+    raceday.save()
 
-    results_text = textmessages.get_result_text_message(database.get_result(race, rcclass, group),
+    results_text = textmessages.get_result_text_message(raceday.get_result(race, rcclass, group),
                                                         rcclass, group, race)
 
     clipboard.copy(results_text)
@@ -597,14 +597,14 @@ def add_new_result_manually():
 
 
 def show_latest_result(select=False):
-    database = db.get_database()
+    raceday = rd.get_raceday()
     if not select:
-        race, rcclass, group = database.get_latest_race_class_group()
+        race, rcclass, group = raceday.get_latest_race_class_group()
     else:
         race_options = [(race, rcclass, group)
-                        for race in database.get_heats_with_results()
+                        for race in raceday.get_heats_with_results()
                         for rcclass in ("2WD", "4WD")
-                        for group in database.get_class_results(race, rcclass)]
+                        for group in raceday.get_class_results(race, rcclass)]
         race, rcclass, group = _select_from_list(
             race_options, "Select which race to display results for.", lambda e: " ".join(e))
 
@@ -613,7 +613,7 @@ def show_latest_result(select=False):
         return
 
     results_text = textmessages.get_result_text_message(
-        database.get_result(race, rcclass, group), rcclass, group, race)
+        raceday.get_result(race, rcclass, group), rcclass, group, race)
 
     clipboard.copy(results_text)
     print(results_text)
@@ -621,38 +621,38 @@ def show_latest_result(select=False):
     print("^^ Copied to clipboard")
 
 
-def show_current_heat_start_list(database: db.Database = None) -> None:
-    if database is None:
-        database = db.get_database()
-    heat_name = database.get_current_heat()
-    heat_start_lists = database.get_start_lists_for_heat(heat_name)
+def show_current_heat_start_list(raceday: rd.Raceday = None) -> None:
+    if raceday is None:
+        raceday = rd.get_raceday()
+    heat_name = raceday.get_current_heat()
+    heat_start_lists = raceday.get_start_lists_for_heat(heat_name)
 
     text_message = textmessages.create_heat_start_list_text_message(
         heat_start_lists,
-        db.CLASS_ORDER[heat_name],
+        rd.CLASS_ORDER[heat_name],
         heat_name,
         extra_text="Vinnare i lägre grupper deltar i nästa högre grupp (ex. B -> A)"
-        if heat_name == db.FINALS_NAME else "")
+        if heat_name == rd.FINALS_NAME else "")
     clipboard.copy(text_message)
     print(text_message)
 
     print("^^ Copied to clipboard")
 
 
-def get_all_start_lists(database) -> Tuple[Iterable[Tuple[str, List]], Dict[str, Dict]]:
+def get_all_start_lists(raceday) -> Tuple[Iterable[Tuple[str, List]], Dict[str, Dict]]:
     start_lists = []
     marshals = {}
-    current_heat_index = database.current_heat
+    current_heat_index = raceday.current_heat
 
-    next_heat, next_rcclass, next_group, _ = _get_next_race(database)
+    next_heat, next_rcclass, next_group, _ = _get_next_race(raceday)
 
     for heat_index in range(current_heat_index + 1):
-        heat_name = db.RACE_ORDER[heat_index]
+        heat_name = rd.RACE_ORDER[heat_index]
 
         marshals[heat_name] = {}
 
         heat_start_lists = []
-        class_order = db.CLASS_ORDER[heat_name]
+        class_order = rd.CLASS_ORDER[heat_name]
 
         # we need to reverse all of them, so they are in reverse chronological order
         for race_index, (rcclass, group) in reversed(list(enumerate(class_order))):
@@ -661,7 +661,7 @@ def get_all_start_lists(database) -> Tuple[Iterable[Tuple[str, List]], Dict[str,
                            next_rcclass == rcclass and \
                            next_group == group
 
-            class_list = database.get_start_lists_for_heat(heat_name)[rcclass]
+            class_list = raceday.get_start_lists_for_heat(heat_name)[rcclass]
             if not class_list.has_group(group):
                 continue
             group_list = class_list.get_start_list(group)
@@ -673,12 +673,12 @@ def get_all_start_lists(database) -> Tuple[Iterable[Tuple[str, List]], Dict[str,
 
             previous_rcclass, previous_group = \
                 util.get_previous_group_wrap_around(
-                    database.get_start_lists_for_heat(heat_name),
-                    db.CLASS_ORDER[heat_name],
+                    raceday.get_start_lists_for_heat(heat_name),
+                    rd.CLASS_ORDER[heat_name],
                     race_index
                 )
             previous_start_list = \
-                database.get_start_lists_for_heat(heat_name)[previous_rcclass].get_start_list(previous_group)
+                raceday.get_start_lists_for_heat(heat_name)[previous_rcclass].get_start_list(previous_group)
             marshals[heat_name][rcclass][group] = \
                 (previous_rcclass, previous_group, previous_start_list)
 
@@ -687,9 +687,9 @@ def get_all_start_lists(database) -> Tuple[Iterable[Tuple[str, List]], Dict[str,
 
 
 def show_current_points(verbose):
-    database = db.get_database()
-    heat_name = database.get_current_heat()
-    points, points_per_race = _calculate_cup_points(database)
+    raceday = rd.get_raceday()
+    heat_name = raceday.get_current_heat()
+    points, points_per_race = _calculate_cup_points(raceday)
 
     text_message = textmessages.create_points_list_text_message(points, points_per_race, heat_name, verbose)
     clipboard.copy(text_message)
@@ -698,24 +698,24 @@ def show_current_points(verbose):
     print("^^ Copied to clipboard")
 
 
-def get_current_cup_points(date) -> Tuple[Dict[db.Driver, int], Dict[str, Dict[db.Driver, List[int]]]]:
-    database = db.get_database_with_date(date)
-    return _calculate_cup_points(database)
+def get_current_cup_points(date) -> Tuple[Dict[rd.Driver, int], Dict[str, Dict[rd.Driver, List[int]]]]:
+    raceday = rd.get_raceday_with_date(date)
+    return _calculate_cup_points(raceday)
 
 
 def show_start_message():
-    database = db.get_database()
+    raceday = rd.get_raceday()
 
-    heat_name, rcclass, group, class_order_index = _get_next_race(database)
+    heat_name, rcclass, group, class_order_index = _get_next_race(raceday)
 
     if heat_name is None:
         print("There are no more races in this heat!")
         return
 
-    heat_start_lists = database.get_start_lists_for_heat(heat_name)
+    heat_start_lists = raceday.get_start_lists_for_heat(heat_name)
 
     text_message = textmessages.create_race_start_message(
-        heat_start_lists, db.CLASS_ORDER[heat_name], heat_name, rcclass, group, class_order_index)
+        heat_start_lists, rd.CLASS_ORDER[heat_name], heat_name, rcclass, group, class_order_index)
 
     clipboard.copy(text_message)
     print(text_message)

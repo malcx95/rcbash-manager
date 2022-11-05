@@ -209,20 +209,20 @@ class RaceResult:
         return self.num_laps_driven.get(driver, 0) > 0
 
 
-class Database:
+class Raceday:
 
-    def __init__(self, json_db: Dict = None):
+    def __init__(self, json_raceday: Dict = None):
         self.all_participants: List[Driver] = \
-            number_list_to_driver_list(json_db[ALL_PARTICIPANTS_KEY]) \
-            if json_db is not None else []
+            number_list_to_driver_list(json_raceday[ALL_PARTICIPANTS_KEY]) \
+            if json_raceday is not None else []
         self.start_lists: Dict[str, Dict[str, HeatStartLists]] = \
-            self._parse_start_lists(json_db[START_LISTS_KEY]) \
-            if json_db is not None else {}
+            self._parse_start_lists(json_raceday[START_LISTS_KEY]) \
+            if json_raceday is not None else {}
         self.results: Dict[str, Dict[str, Dict[str, RaceResult]]] = \
-            self._parse_results(json_db[RESULTS_KEY]) \
-            if json_db is not None else {}
-        self.current_heat: int = json_db[CURRENT_HEAT_KEY] \
-            if json_db is not None else 0
+            self._parse_results(json_raceday[RESULTS_KEY]) \
+            if json_raceday is not None else {}
+        self.current_heat: int = json_raceday[CURRENT_HEAT_KEY] \
+            if json_raceday is not None else 0
 
     def set_all_participants(self, number_list: List[int]) -> None:
         self.all_participants = number_list_to_driver_list(number_list)
@@ -235,7 +235,7 @@ class Database:
 
     def save(self) -> None:
         filename = get_todays_filename()
-        self._write_database(filename)
+        self._write_raceday(filename)
 
     def get_current_heat(self) -> str:
         return RACE_ORDER[self.current_heat]
@@ -439,19 +439,19 @@ class Database:
                 race_entry.positions.append(driver)
                 race_entry.add_dns(driver)
 
-    def _write_database(self, filename: str) -> None:
-        json_db = self._get_serializeable_db()
+    def _write_raceday(self, filename: str) -> None:
+        json_raceday = self._get_serializeable_raceday()
         with open(RESULT_FOLDER_PATH / filename, "w") as f:
-            json.dump(json_db, f, indent=2, default=lambda d: d.__dict__)
+            json.dump(json_raceday, f, indent=2, default=lambda d: d.__dict__)
 
-    def _get_serializeable_db(self) -> Dict[str, Dict[str, Dict[str, Dict]]]:
-        database = {
+    def _get_serializeable_raceday(self) -> Dict[str, Dict[str, Dict[str, Dict]]]:
+        raceday = {
             ALL_PARTICIPANTS_KEY: [d.number for d in self.all_participants],
             START_LISTS_KEY: self.get_start_lists_dict(),
             RESULTS_KEY: self.get_results_dict(),
             CURRENT_HEAT_KEY: self.current_heat
         }
-        return database
+        return raceday
 
     def _parse_start_lists(self, json_dict: Dict[str, Dict[str, Dict[str, List]]]) -> \
             Dict[str, Dict[str, HeatStartLists]]:
@@ -482,13 +482,13 @@ def number_list_to_driver_list(numbers: List[int]) -> List[Driver]:
     return [Driver(number) for number in numbers]
 
 
-def create_empty_database() -> Database:
-    """Creates and returns an empty Database object"""
-    return Database(None)
+def create_empty_raceday() -> Raceday:
+    """Creates and returns an empty Raceday object"""
+    return Raceday(None)
 
 
-def init_db_path() -> bool:
-    """Creates DB directory and returns whether today's database already exists"""
+def init_raceday_path() -> bool:
+    """Creates DB directory and returns whether today's raceday already exists"""
     RESULT_FOLDER_PATH.mkdir(exist_ok=True)
     filename = get_todays_filename()
     path = RESULT_FOLDER_PATH / filename
@@ -513,48 +513,48 @@ def get_todays_filename() -> str:
     return todays_date_string + ".json"
 
 
-def get_database() -> Database:
+def get_raceday() -> Raceday:
     filename = get_todays_filename()
-    json_db = _load_database(filename, convert_to_durations=True)
-    return Database(json_db)
+    json_raceday = _load_raceday(filename, convert_to_durations=True)
+    return Raceday(json_raceday)
 
 
-def load_and_deserialize_database(filepath: str) -> Database:
+def load_and_deserialize_raceday(filepath: str) -> Raceday:
     with open(filepath) as f:
-        json_db = json.load(f)
-    replaced_with_durations = _replace_with_durations(json_db)
-    return Database(replaced_with_durations)
+        json_raceday = json.load(f)
+    replaced_with_durations = _replace_with_durations(json_raceday)
+    return Raceday(replaced_with_durations)
 
 
-def _load_database(filename, convert_to_durations=False) -> Dict:
+def _load_raceday(filename, convert_to_durations=False) -> Dict:
     with open(RESULT_FOLDER_PATH / filename) as f:
-        database = json.load(f)
-    return _replace_with_durations(database) if convert_to_durations else database
+        raceday = json.load(f)
+    return _replace_with_durations(raceday) if convert_to_durations else raceday
 
 
-def get_database_with_date(date: str) -> Database:
-    # yeah this may not be the best design, to convert back and forth...
-    db_date = datetime.datetime.strptime(date, "%Y-%m-%d").strftime(DB_DATE_FORMAT)
-    filename = f"{db_date}.json"
+def get_raceday_with_date(date: str) -> Raceday:
+    # yeah, this may not be the best design, to convert back and forth...
+    raceday_date = datetime.datetime.strptime(date, "%Y-%m-%d").strftime(DB_DATE_FORMAT)
+    filename = f"{raceday_date}.json"
     with open(RESULT_FOLDER_PATH / filename) as f:
-        json_db = json.load(f)
-    return Database(_replace_with_durations(json_db))
+        json_raceday = json.load(f)
+    return Raceday(_replace_with_durations(json_raceday))
 
 
-def _replace_with_durations(database):
-    if isinstance(database, dict):
-        if len(database) == 1 and "milliseconds" in database:
-            return Duration(database["milliseconds"])
+def _replace_with_durations(raceday):
+    if isinstance(raceday, dict):
+        if len(raceday) == 1 and "milliseconds" in raceday:
+            return Duration(raceday["milliseconds"])
         else:
             replaced = {}
-            for key, value in database.items():
+            for key, value in raceday.items():
                 new_key = key
                 if isinstance(key, str) and key.isnumeric():
                     new_key = int(key)
 
                 replaced[new_key] = _replace_with_durations(value)
             return replaced
-    elif isinstance(database, list):
-        return [_replace_with_durations(element) for element in database]
+    elif isinstance(raceday, list):
+        return [_replace_with_durations(element) for element in raceday]
     else:
-        return database
+        return raceday
