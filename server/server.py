@@ -2,7 +2,7 @@ import flask
 import json
 
 import server.racelogic.resultcalculation as rc
-import server.racelogic.db as db
+import server.racelogic.raceday as rd
 
 from flask import Flask, request, Blueprint
 from flask_login import login_required, logout_user, current_user, login_user
@@ -38,16 +38,16 @@ AUTHENTICATED_TABS = list(enumerate([
 
 
 SHORTER_FINAL_NAMES = {
-    db.EIGHTH_FINAL_NAME: "Åttondel",
-    db.QUARTER_FINAL_NAME: "Kvart",
-    db.SEMI_FINAL_NAME: "Semi",
-    db.FINALS_NAME: "Final",
+    rd.EIGHTH_FINAL_NAME: "Åttondel",
+    rd.QUARTER_FINAL_NAME: "Kvart",
+    rd.SEMI_FINAL_NAME: "Semi",
+    rd.FINALS_NAME: "Final",
 }
 
 
 def _render_page(active_index: int, selected_date: str) -> str:
     is_authenticated = current_user.is_authenticated
-    db_dates = db.get_all_dates()
+    db_dates = rd.get_all_dates()
     _, (active_tab, active_tab_readable, active_tab_icon) = TABS[active_index]
 
     start_lists = []
@@ -55,10 +55,10 @@ def _render_page(active_index: int, selected_date: str) -> str:
     results = {}
     points = {}
 
-    database = db.get_database_with_date(selected_date)
+    raceday = rd.get_raceday_with_date(selected_date)
     if active_tab in (START_LISTS_TAB, RESULTS_TAB):
-        start_lists, marshals = rc.get_all_start_lists(database)
-        results = database.get_all_results()
+        start_lists, marshals = rc.get_all_start_lists(raceday)
+        results = raceday.get_all_results()
     elif active_tab == POINTS_TAB:
         all_points, points_per_race = rc.get_current_cup_points(selected_date)
         points = {
@@ -66,7 +66,7 @@ def _render_page(active_index: int, selected_date: str) -> str:
             for rcclass in ("2WD", "4WD")
         }
 
-    race_order = [SHORTER_FINAL_NAMES[name] for name in db.NON_QUALIFIER_RACE_ORDER]
+    race_order = [SHORTER_FINAL_NAMES[name] for name in rd.NON_QUALIFIER_RACE_ORDER]
 
     return flask.render_template(f"{active_tab}.html",
                                  tabs=TABS,
@@ -87,9 +87,9 @@ def _render_page(active_index: int, selected_date: str) -> str:
                                  )
 
 
-def _render_individual_result_page(selected_date: str, result: db.RaceResult) -> str:
+def _render_individual_result_page(selected_date: str, result: rd.RaceResult) -> str:
     active_index = 1
-    db_dates = db.get_all_dates()
+    db_dates = rd.get_all_dates()
     _, (active_tab, active_tab_readable, active_tab_icon) = TABS[active_index]
 
     laptimes_json = _create_laptimes_json(result)
@@ -121,7 +121,7 @@ def _create_laptimes_json(result):
 
 
 def _is_valid_db_date(date):
-    return date in db.get_all_dates()
+    return date in rd.get_all_dates()
 
 
 def _sort_points(all_points, points_per_race, rcclass):
@@ -131,7 +131,7 @@ def _sort_points(all_points, points_per_race, rcclass):
 
 
 def _pad_list_with_nones(points_list):
-    return points_list + [None]*(len(db.NON_QUALIFIER_RACE_ORDER) - len(points_list))
+    return points_list + [None]*(len(rd.NON_QUALIFIER_RACE_ORDER) - len(points_list))
 
 
 # TODO remove
@@ -148,39 +148,40 @@ def logout():
 
 @main_bp.get(f"/{START_LISTS_TAB}")
 def start_lists_default():
-    latest = db.get_all_dates()[0]
-    return flask.redirect(f"/{START_LISTS_TAB}/{latest}")
+    latest = rd.get_all_dates()[0]
+    return flask.redirect(f"/{START_LISTS_TAB}/2022/{latest}")
 
 
 @main_bp.get(f"/{RESULTS_TAB}")
 def results_default():
-    latest = db.get_all_dates()[0]
-    return flask.redirect(f"/{RESULTS_TAB}/{latest}")
+    latest = rd.get_all_dates()[0]
+    return flask.redirect(f"/{RESULTS_TAB}/2022/{latest}")
 
 
 @main_bp.get(f"/{POINTS_TAB}")
 def points_default():
-    latest = db.get_all_dates()[0]
-    return flask.redirect(f"/{POINTS_TAB}/{latest}")
+    latest = rd.get_all_dates()[0]
+    # TODO fix year
+    return flask.redirect(f"/{POINTS_TAB}/2022/{latest}")
 
 
 # TODO could you do the following three endpoints as a macro?
-@main_bp.get(f"/{START_LISTS_TAB}/<date>")
-def start_lists_page(date):
+@main_bp.get(f"/{START_LISTS_TAB}/<year>/<date>")
+def start_lists_page(year, date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{START_LISTS_TAB}")
     return _render_page(active_index=0, selected_date=date)
 
 
-@main_bp.get(f"/{RESULTS_TAB}/<date>")
-def results_page(date):
+@main_bp.get(f"/{RESULTS_TAB}/<year>/<date>")
+def results_page(year, date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{RESULTS_TAB}")
     return _render_page(active_index=1, selected_date=date)
 
 
-@main_bp.get(f"/{RESULTS_TAB}/<date>/race")
-def results_details_page(date):
+@main_bp.get(f"/{RESULTS_TAB}/<year>/<date>/race")
+def results_details_page(year, date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{RESULTS_TAB}")
 
@@ -188,25 +189,25 @@ def results_details_page(date):
     rcclass = request.args.get("rcclass")
     group = request.args.get("group")
 
-    database = db.get_database_with_date(date)
+    raceday = rd.get_raceday_with_date(date)
 
     # TODO make 404 page
-    if heat not in db.RACE_ORDER:
+    if heat not in rd.RACE_ORDER:
         return flask.redirect(f"/{RESULTS_TAB}")
     if rcclass not in ("2WD", "4WD"):
         return flask.redirect(f"/{RESULTS_TAB}")
     if group not in ("A", "B", "C"):
         return flask.redirect(f"/{RESULTS_TAB}")
 
-    result = database.get_result(heat, rcclass, group)
+    result = raceday.get_result(heat, rcclass, group)
     if result is None:
         return flask.redirect(f"/{RESULTS_TAB}")
 
     return _render_individual_result_page(date, result)
 
 
-@main_bp.get(f"/{POINTS_TAB}/<date>")
-def points_page(date):
+@main_bp.get(f"/{POINTS_TAB}/<year>/<date>")
+def points_page(year, date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{POINTS_TAB}")
     return _render_page(active_index=2, selected_date=date)

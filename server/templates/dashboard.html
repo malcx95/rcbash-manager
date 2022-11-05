@@ -4,8 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="">
-  <meta name="author" content="Mark Otto, Jacob Thornton, and Bootstrap contributors">
-  <meta name="generator" content="Hugo 0.101.0">
+  <meta name="author" content="Malcolm Vigren">
   <title>RCBash Race Manager</title>
 
   <link href="/static/assets/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -26,7 +25,7 @@
 
     <ul class="dropdown-menu day-dropdown">
       {% for i, date in db_dates %}
-      <li><a class="dropdown-item" href="/{{ active_tab }}/{{ date }}">{{ date if i > 0 else date + " - senaste"}}</a></li>
+      <li><a class="dropdown-item" href="/{{ active_tab }}/{{ year }}/{{ date }}">{{ date if i > 0 else date + " - senaste"}}</a></li>
         {% if i == 0 %}
           <li><hr class="dropdown-divider"></li>
         {% endif %}

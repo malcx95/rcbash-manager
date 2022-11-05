@@ -1,10 +1,10 @@
 from typing import Dict
 
-import db
+import raceday as rd
 import htmlparsing
 import resultcalculation
 from duration import Duration
-from db import QUALIFIERS_NAME, START_LISTS_KEY, RESULTS_KEY, \
+from raceday import QUALIFIERS_NAME, START_LISTS_KEY, RESULTS_KEY, \
     ALL_PARTICIPANTS_KEY, QUARTER_FINAL_NAME, FINALS_NAME, CURRENT_HEAT_KEY
 
 import os
@@ -18,15 +18,15 @@ TEST_DATABASE_PATH = "testdata/testdatabases"
 
 class ResultCalculationTests(TestCase):
 
-    test_databases: Dict[str, db.Database] = {}
+    test_racedays: Dict[str, rd.Raceday] = {}
 
     @classmethod
     def setUpClass(cls):
-        database_files = os.listdir(TEST_DATABASE_PATH)
-        for database in database_files:
-            path = os.path.join(TEST_DATABASE_PATH, database)
-            name = database.split(".json")[0]
-            cls.test_databases[name] = db.load_and_deserialize_database(path)
+        raceday_files = os.listdir(TEST_DATABASE_PATH)
+        for raceday in raceday_files:
+            path = os.path.join(TEST_DATABASE_PATH, raceday)
+            name = raceday.split(".json")[0]
+            cls.test_racedays[name] = rd.load_and_deserialize_raceday(path)
 
     def setUp(self):
         self.clipboard = None
@@ -35,10 +35,10 @@ class ResultCalculationTests(TestCase):
             self.clipboard = obj
 
         resultcalculation.clipboard.copy = fake_clipboard_copy
-        self.setUpPyfakefs(modules_to_reload=[db, resultcalculation])
-        db.RESULT_FOLDER_PATH = Path("test_rcbash_results")
-        resultcalculation.db.RESULT_FOLDER_PATH = Path("test_rcbash_results")
-        db.RESULT_FOLDER_PATH.mkdir(exist_ok=True)
+        self.setUpPyfakefs(modules_to_reload=[rd, resultcalculation])
+        rd.RESULT_FOLDER_PATH = Path("test_rcbash_results")
+        resultcalculation.rd.RESULT_FOLDER_PATH = Path("test_rcbash_results")
+        rd.RESULT_FOLDER_PATH.mkdir(exist_ok=True)
 
     def tearDown(self):
         # TODO make this a parameter
@@ -57,17 +57,17 @@ class ResultCalculationTests(TestCase):
         resultcalculation.htmlparsing.get_race_participants = mock.Mock(return_value=[num for num in total_times])
         resultcalculation._read_results = mock.Mock(return_value=None)
 
-    def setup_database_state(self, start_lists, results, current_heat):
-        json_db = {START_LISTS_KEY: start_lists}
+    def setup_raceday_state(self, start_lists, results, current_heat):
+        json_raceday = {START_LISTS_KEY: start_lists}
         all_participants = list(set(num
                                     for rcclass in start_lists[QUALIFIERS_NAME].values()
                                     for group in rcclass.values()
                                     for num in group))
-        json_db[ALL_PARTICIPANTS_KEY] = all_participants
-        json_db[RESULTS_KEY] = results
-        json_db[CURRENT_HEAT_KEY] = current_heat
-        database = db.Database(json_db)
-        database.save()
+        json_raceday[ALL_PARTICIPANTS_KEY] = all_participants
+        json_raceday[RESULTS_KEY] = results
+        json_raceday[CURRENT_HEAT_KEY] = current_heat
+        raceday = rd.Raceday(json_raceday)
+        raceday.save()
 
     def _assert_correct_results_added(self, expected, actual):
         for heat, results in expected.items():
@@ -130,10 +130,10 @@ class ResultCalculationTests(TestCase):
         ]
         self.setup_fake_input(participants_entered)
         resultcalculation.create_qualifiers()
-        database = db.get_database()
+        raceday = rd.get_raceday()
 
         expected_all_participants = {
-            db.Driver(num) for num in {90, 89, 11, 12, 27, 29, 21, 22, 26, 35, 49, 51, 67, 68, 36}
+            rd.Driver(num) for num in {90, 89, 11, 12, 27, 29, 21, 22, 26, 35, 49, 51, 67, 68, 36}
         }
         expected_start_lists = {
             "Kval": {
@@ -141,10 +141,10 @@ class ResultCalculationTests(TestCase):
                 "4WD": {"A": [35, 49, 51], "B": [67, 68, 36]},
             }
         }
-        self.assertSetEqual(set(database.all_participants), expected_all_participants)
-        self.assertDictEqual(database.get_start_lists_dict(), expected_start_lists)
-        self.assertDictEqual(database.get_results_dict(), {})
-        self.assertEqual(database.get_current_heat(), db.QUALIFIERS_NAME)
+        self.assertSetEqual(set(raceday.all_participants), expected_all_participants)
+        self.assertDictEqual(raceday.get_start_lists_dict(), expected_start_lists)
+        self.assertDictEqual(raceday.get_results_dict(), {})
+        self.assertEqual(raceday.get_current_heat(), rd.QUALIFIERS_NAME)
 
     def test_add_new_result_qualifiers(self):
         list_of_initial_start_lists = [
@@ -261,7 +261,7 @@ class ResultCalculationTests(TestCase):
             ):
 
             self.setup_fake_input(["y"])
-            self.setup_database_state(initial_start_lists, {}, 0)
+            self.setup_raceday_state(initial_start_lists, {}, 0)
             self.setup_fake_html_parsing(total_times, num_laps_driven, best_laptimes)
 
             not_class = {"4WD": "2WD", "2WD": "4WD"}[expected_class]
@@ -292,16 +292,16 @@ class ResultCalculationTests(TestCase):
             with self.subTest(description):
 
                 resultcalculation.add_new_result()
-                database = db.get_database()
-                actual_results = database.get_results_dict(convert_from_durations=False)
+                raceday = rd.get_raceday()
+                actual_results = raceday.get_results_dict(convert_from_durations=False)
                 self._assert_correct_results_added(expected_results, actual_results)
-                self.assertDictEqual(database.get_start_lists_dict(), initial_start_lists,
+                self.assertDictEqual(raceday.get_start_lists_dict(), initial_start_lists,
                                      "Start lists were changed!")
-                self.assertEqual(database.current_heat, 0, "Current heat was changed!")
+                self.assertEqual(raceday.current_heat, 0, "Current heat was changed!")
 
     def test_start_new_race_round_qualifiers_normal(self):
-        database = self.test_databases["test_start_new_race_round_qualifiers_normal"]
-        database.save()
+        raceday = self.test_racedays["test_start_new_race_round_qualifiers_normal"]
+        raceday.save()
         self.setup_fake_input(["y"])
 
         resultcalculation.start_new_race_round()
@@ -317,14 +317,14 @@ class ResultCalculationTests(TestCase):
                 "C": [83, 46, 60, 64]
             }
         }
-        new_database = db.get_database()
-        self.assertDictEqual(new_database.get_start_lists_dict()[db.EIGHTH_FINAL_NAME],
+        new_raceday = rd.get_raceday()
+        self.assertDictEqual(new_raceday.get_start_lists_dict()[rd.EIGHTH_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made from qualifiers!")
 
     def test_start_new_race_round_qualifiers_dns(self):
-        database = self.test_databases["test_start_new_race_round_qualifiers_dns"]
-        database.save()
+        raceday = self.test_racedays["test_start_new_race_round_qualifiers_dns"]
+        raceday.save()
         self.setup_fake_input(["y"])
 
         resultcalculation.start_new_race_round()
@@ -340,14 +340,14 @@ class ResultCalculationTests(TestCase):
                 "C": [46, 11, 64, 60]
             }
         }
-        new_database = db.get_database()
-        self.assertDictEqual(new_database.get_start_lists_dict()[db.EIGHTH_FINAL_NAME],
+        new_raceday = rd.get_raceday()
+        self.assertDictEqual(new_raceday.get_start_lists_dict()[rd.EIGHTH_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made from qualifiers!")
 
     def test_start_new_race_round_qualifiers_merge_groups(self):
-        database = self.test_databases["test_start_new_race_round_qualifiers_normal"]
-        database.save()
+        raceday = self.test_racedays["test_start_new_race_round_qualifiers_normal"]
+        raceday.save()
         self.setup_fake_input([
             "n",  # don't use current groups
             "A",  # merge all 2WD to A
@@ -366,14 +366,14 @@ class ResultCalculationTests(TestCase):
                 "B": [82, 39, 67, 83, 46, 60, 64],
             }
         }
-        new_database = db.get_database()
-        self.assertDictEqual(new_database.get_start_lists_dict()[db.EIGHTH_FINAL_NAME],
+        new_raceday = rd.get_raceday()
+        self.assertDictEqual(new_raceday.get_start_lists_dict()[rd.EIGHTH_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made from qualifiers!")
 
     def test_start_new_race_round_qualifiers_merge_groups_dns(self):
-        database = self.test_databases["test_start_new_race_round_qualifiers_dns"]
-        database.save()
+        raceday = self.test_racedays["test_start_new_race_round_qualifiers_dns"]
+        raceday.save()
         self.setup_fake_input([
             "n",  # don't use current groups
             "A",  # merge all 2WD to A
@@ -392,14 +392,14 @@ class ResultCalculationTests(TestCase):
                 "B": [39, 67, 83, 46, 11, 64, 60],
             }
         }
-        new_database = db.get_database()
-        self.assertDictEqual(new_database.get_start_lists_dict()[db.EIGHTH_FINAL_NAME],
+        new_raceday = rd.get_raceday()
+        self.assertDictEqual(new_raceday.get_start_lists_dict()[rd.EIGHTH_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made from qualifiers!")
 
     def test_start_new_race_round_finals_normal(self):
-        database = self.test_databases["test_start_new_race_round_finals_normal"]
-        database.save()
+        raceday = self.test_racedays["test_start_new_race_round_finals_normal"]
+        raceday.save()
 
         # TODO make this a parameter
         resultcalculation.MAX_NUM_PARTICIPANTS_PER_GROUP = 6
@@ -418,18 +418,18 @@ class ResultCalculationTests(TestCase):
                 "C": [67, 83, 60, 64]
             }
         }
-        new_database = db.get_database()
-        self.assertDictEqual(new_database.get_start_lists_dict()[FINALS_NAME],
+        new_raceday = rd.get_raceday()
+        self.assertDictEqual(new_raceday.get_start_lists_dict()[FINALS_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made for finals!")
 
     def test_start_new_race_round_finals_many_people_per_heat(self):
-        database = self.test_databases["test_start_new_race_round_finals_normal"]
+        raceday = self.test_racedays["test_start_new_race_round_finals_normal"]
 
         # TODO make this a parameter
         resultcalculation.MAX_NUM_PARTICIPANTS_PER_GROUP = 9
 
-        database.save()
+        raceday.save()
 
         resultcalculation.start_new_race_round()
 
@@ -443,14 +443,14 @@ class ResultCalculationTests(TestCase):
                 "B": [89, 82, 67, 83, 60, 64],
             }
         }
-        new_database = db.get_database()
-        self.assertDictEqual(new_database.get_start_lists_dict()[FINALS_NAME],
+        new_raceday = rd.get_raceday()
+        self.assertDictEqual(new_raceday.get_start_lists_dict()[FINALS_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made for finals!")
 
     def test_start_new_race_round_intermediate_normal(self):
-        database = self.test_databases["test_start_new_race_round_intermediate_normal"]
-        database.save()
+        raceday = self.test_racedays["test_start_new_race_round_intermediate_normal"]
+        raceday.save()
 
         resultcalculation.start_new_race_round()
 
@@ -465,15 +465,15 @@ class ResultCalculationTests(TestCase):
                 "C": [67, 82, 64, 83]
             }
         }
-        new_database = db.get_database()
-        self.assertDictEqual(new_database.get_start_lists_dict()[QUARTER_FINAL_NAME],
+        new_raceday = rd.get_raceday()
+        self.assertDictEqual(new_raceday.get_start_lists_dict()[QUARTER_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made for eight finals!")
-        self.assertEqual(new_database.current_heat, 2, "Heat was not incremented!")
+        self.assertEqual(new_raceday.current_heat, 2, "Heat was not incremented!")
 
     def test_start_new_race_round_intermediate_only_A_heat(self):
-        database = self.test_databases["test_start_new_race_round_intermediate_one_heat"]
-        database.save()
+        raceday = self.test_racedays["test_start_new_race_round_intermediate_one_heat"]
+        raceday.save()
 
         resultcalculation.start_new_race_round()
 
@@ -487,70 +487,70 @@ class ResultCalculationTests(TestCase):
                 "C": [67, 82, 64, 83]
             }
         }
-        new_database = db.get_database()
-        self.assertDictEqual(new_database.get_start_lists_dict()[QUARTER_FINAL_NAME],
+        new_raceday = rd.get_raceday()
+        self.assertDictEqual(new_raceday.get_start_lists_dict()[QUARTER_FINAL_NAME],
                              expected_new_start_lists,
                              "Start lists were incorrectly made for eight finals!")
-        self.assertEqual(new_database.current_heat, 2, "Heat was not incremented!")
+        self.assertEqual(new_raceday.current_heat, 2, "Heat was not incremented!")
 
     def test_calculate_cup_points(self):
-        database = self.test_databases["test_calculate_cup_points"]
-        database.save()
-        database = db.get_database()
+        raceday = self.test_racedays["test_calculate_cup_points"]
+        raceday.save()
+        raceday = rd.get_raceday()
 
-        points, points_per_race = resultcalculation._calculate_cup_points(database)
+        points, points_per_race = resultcalculation._calculate_cup_points(raceday)
 
         expected_total_points = {
-            db.Driver(37): 100,
-            db.Driver(22): 92,
-            db.Driver(88): 93,
-            db.Driver(41): 81,
-            db.Driver(27): 77,
-            db.Driver(35): 65,
-            db.Driver(19): 64,
-            db.Driver(65): 64,
-            db.Driver(29): 61,
-            db.Driver(71): 78,
-            db.Driver(11): 90,
-            db.Driver(90): 86,
-            db.Driver(77): 58,
-            db.Driver(45): 70,
-            db.Driver(36): 85,
-            db.Driver(21): 87,
-            db.Driver(89): 47,
-            db.Driver(75): 70,
-            db.Driver(82): 91,
-            db.Driver(46): 64,
-            db.Driver(26): 52
+            rd.Driver(37): 100,
+            rd.Driver(22): 92,
+            rd.Driver(88): 93,
+            rd.Driver(41): 81,
+            rd.Driver(27): 77,
+            rd.Driver(35): 65,
+            rd.Driver(19): 64,
+            rd.Driver(65): 64,
+            rd.Driver(29): 61,
+            rd.Driver(71): 78,
+            rd.Driver(11): 90,
+            rd.Driver(90): 86,
+            rd.Driver(77): 58,
+            rd.Driver(45): 70,
+            rd.Driver(36): 85,
+            rd.Driver(21): 87,
+            rd.Driver(89): 47,
+            rd.Driver(75): 70,
+            rd.Driver(82): 91,
+            rd.Driver(46): 64,
+            rd.Driver(26): 52
         }
         self.assertDictEqual(points, expected_total_points,
                              "Points were calculated incorrectly!")
 
         expected_points_per_race = {
             "2WD": {
-                db.Driver(37): [20, 20, 20, 40],
-                db.Driver(22): [19, 19, 18, 36],
-                db.Driver(88): [18, 18, 19, 38],
-                db.Driver(27): [14, 16, 15, 32],
-                db.Driver(35): [15, 17, 11, 22],
-                db.Driver(29): [12, 11, 12, 26],
-                db.Driver(19): [11, 12, 13, 28],
-                db.Driver(41): [16, 14, 17, 34],
-                db.Driver(71): [17, 15, 16, 30],
-                db.Driver(65): [13, 13, 14, 24],
+                rd.Driver(37): [20, 20, 20, 40],
+                rd.Driver(22): [19, 19, 18, 36],
+                rd.Driver(88): [18, 18, 19, 38],
+                rd.Driver(27): [14, 16, 15, 32],
+                rd.Driver(35): [15, 17, 11, 22],
+                rd.Driver(29): [12, 11, 12, 26],
+                rd.Driver(19): [11, 12, 13, 28],
+                rd.Driver(41): [16, 14, 17, 34],
+                rd.Driver(71): [17, 15, 16, 30],
+                rd.Driver(65): [13, 13, 14, 24],
             },
             "4WD": {
-                db.Driver(11): [16, 14, 20, 40],
-                db.Driver(90): [17, 18, 17, 34],
-                db.Driver(45): [13, 19, 16, 22],
-                db.Driver(36): [19, 16, 14, 36],
-                db.Driver(77): [0, 13, 15, 30],
-                db.Driver(89): [0, 11, 10, 26],
-                db.Driver(46): [12, 12, 12, 28],
-                db.Driver(82): [14, 20, 19, 38],
-                db.Driver(21): [20, 17, 18, 32],
-                db.Driver(75): [18, 15, 13, 24],
-                db.Driver(26): [11, 10, 11, 20]
+                rd.Driver(11): [16, 14, 20, 40],
+                rd.Driver(90): [17, 18, 17, 34],
+                rd.Driver(45): [13, 19, 16, 22],
+                rd.Driver(36): [19, 16, 14, 36],
+                rd.Driver(77): [0, 13, 15, 30],
+                rd.Driver(89): [0, 11, 10, 26],
+                rd.Driver(46): [12, 12, 12, 28],
+                rd.Driver(82): [14, 20, 19, 38],
+                rd.Driver(21): [20, 17, 18, 32],
+                rd.Driver(75): [18, 15, 13, 24],
+                rd.Driver(26): [11, 10, 11, 20]
             }
         }
         for rcclass in expected_points_per_race:

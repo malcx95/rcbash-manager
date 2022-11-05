@@ -1,9 +1,15 @@
 """Database models."""
+from typing import List, Tuple
+from pathlib import Path
+
 from . import db
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
+from .racelogic.raceday import RESULT_FOLDER_PATH
+
 import os
+import datetime
 
 PEPPER = os.environ["DB_PEPPER"]
 
@@ -95,6 +101,55 @@ class UserRoles(db.Model):
     role_id = db.Column(
         db.Integer(), db.ForeignKey("roles.id", ondelete="CASCADE")
     )
+
+
+class Race(db.Model):
+    __tablename__ = "races"
+
+    id = db.Column(
+        db.Integer(),
+        primary_key=True
+    )
+
+    year = db.Column(
+        db.Integer(),
+    )
+
+    date = db.Column(
+        db.Date(),
+        unique=True
+    )
+
+    filename = db.Column(
+        db.String(50),
+        unique=True
+    )
+
+
+def get_races(season=None) -> List[Tuple[int, datetime.date, Path]]:
+    races = db.session.query(Race) \
+        if season is None else db.session.query(Race).filter_by(year=season)
+    return [
+        (race.year, race.date, RESULT_FOLDER_PATH / (race.filename + ".json"))
+        for race in races
+    ]
+
+
+def create_past_seasons_if_necessary():
+    seasons = [
+        (2022, ["220430", "220528", "220702", "220806", "220903"])
+    ]
+    if db.session.query(Race.id).first() is None:
+        for year, filenames in seasons:
+            for filename in filenames:
+                year = int("20" + filename[0:2])
+                month = int(filename[2:4])
+                day = int(filename[4:6])
+
+                date = datetime.date(year, month, day)
+                race = Race(year=year, date=date, filename=filename)
+                db.session.add(race)
+        db.session.commit()
 
 
 def create_roles_if_necessary():

@@ -3,7 +3,6 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 
-
 db = SQLAlchemy()
 login_manager = LoginManager()
 
@@ -25,9 +24,10 @@ def create_app():
         app.register_blueprint(server.main_bp)
         app.register_blueprint(auth.auth_bp)
 
-        # Create Database Models
+        # Create Raceday Models
         db.create_all()
 
         models.create_roles_if_necessary()
+        models.create_past_seasons_if_necessary()
 
         return app

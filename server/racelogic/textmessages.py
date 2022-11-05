@@ -2,22 +2,22 @@ from typing import Tuple, Dict, List
 
 try:
     from server.racelogic.duration import Duration
-    from server.racelogic.db import HeatStartLists
+    from server.racelogic.raceday import HeatStartLists
 
-    from server.racelogic import db
+    from server.racelogic import raceday as rd
     import server.racelogic.names
     import server.racelogic.util as util
     import server.racelogic.filelocation
 except ImportError:
-    # i'm sorry this is ugly
+    # I'm sorry this is ugly
     from duration import Duration
-    from db import HeatStartLists
+    from raceday import HeatStartLists
 
     import htmlparsing
     import names
     import util as util
     import filelocation
-    import db as db
+    import raceday as rd
 
 
 CLASSES = {2: "2WD", 4: "4WD"}
@@ -87,9 +87,9 @@ START_MESSAGE_TEMPLATE = \
 Gör er redo och lycka till! {race_flag}"""
 
 
-def get_result_text_message(results: db.RaceResult, rcclass: str, group: str, race: str):
+def get_result_text_message(results: rd.RaceResult, rcclass: str, group: str, race: str):
 
-    def create_position_line(index, driver: db.Driver):
+    def create_position_line(index, driver: rd.Driver):
         name = driver.name
         medal = f"{MEDALS[index]} " if index < 3 else ""
         dns = ""
@@ -99,15 +99,15 @@ def get_result_text_message(results: db.RaceResult, rcclass: str, group: str, ra
 
         return f"{index + 1}. {driver.number} - {name} {medal}{dns}"
 
-    def create_best_laptimes_line(index, num_time: Tuple[db.Driver, Duration]):
+    def create_best_laptimes_line(index, num_time: Tuple[rd.Driver, Duration]):
         driver, time = num_time
         return f"{driver.number} - {driver.name}: {time}"
 
-    def create_average_laptimes_line(index, num_time: Tuple[db.Driver, Duration]):
+    def create_average_laptimes_line(index, num_time: Tuple[rd.Driver, Duration]):
         driver, time = num_time
         return f"{driver.number} - {driver.name}: {time}"
 
-    def create_actual_times_line(index, driver: db.Driver):
+    def create_actual_times_line(index, driver: rd.Driver):
         time = total_times.get(driver)
         if time is None:
             return f"{driver.number} - {driver.name}: Startade ej"
