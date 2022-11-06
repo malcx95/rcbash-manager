@@ -27,7 +27,6 @@ body {
 
 @media (max-width: 767.98px) {
   .sidebar {
-    top: 5rem;
   }
 }
 
@@ -96,5 +95,22 @@ body {
 }
 
 .day-dropdown {
-  left: 30% !important;
+    margin: 5px;
+}
+
+.pointer {
+    cursor: pointer;
+}
+
+.season-modal {
+}
+
+.season-dropdown {
+    margin-left: auto;
+    margin-right: auto;
+    width: 8em;
+}
+
+.season-dropdown-text {
+    width: 100%;
 }

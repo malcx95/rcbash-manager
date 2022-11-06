@@ -14,7 +14,8 @@
         {% if (heat_name, rcclass, group) in results %}
           <div>
             <div class="card result-card">
-              <a href="/results/{{ selected_date }}/race?heat={{ heat_name }}&rcclass={{ rcclass }}&group={{ group }}" class="stretched-link"></a>
+              <a href="{{ url_for('main_bp.results_details_page', year=year, date=selected_date, heat=heat_name, rcclass=rcclass, group=group) }}"
+                 class="stretched-link"></a>
               <h5 class="card-header">
                 <strong>{{ rcclass }}</strong> Grupp {{ group }}
                 <span class="weak h6"> Klicka för detaljer</span>
