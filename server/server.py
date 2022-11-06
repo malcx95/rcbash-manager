@@ -8,6 +8,7 @@ from flask import Flask, request, Blueprint
 from flask_login import login_required, logout_user, current_user, login_user
 from pathlib import Path
 
+from server import models
 
 main_bp = Blueprint(
     "main_bp",
@@ -36,7 +37,6 @@ AUTHENTICATED_TABS = list(enumerate([
     (LOGOUT_URL, "Logga ut", "log-out"),
 ]))
 
-
 SHORTER_FINAL_NAMES = {
     rd.EIGHTH_FINAL_NAME: "Åttondel",
     rd.QUARTER_FINAL_NAME: "Kvart",
@@ -44,11 +44,14 @@ SHORTER_FINAL_NAMES = {
     rd.FINALS_NAME: "Final",
 }
 
+# TODO can the admin controls just be modals on the regular pages?
+# For instance, maybe you would start a new race round from the Start lists page,
+# with a button only visible to admins, which opens a modal.
+# The result page would just have edit buttons to edit the result or add a result manually.
 
-def _render_page(active_index: int, selected_date: str) -> str:
-    is_authenticated = current_user.is_authenticated
-    db_dates = rd.get_all_dates()
-    _, (active_tab, active_tab_readable, active_tab_icon) = TABS[active_index]
+
+def _render_page(active_index: int, selected_date: str, selected_season: int) -> str:
+    _, (active_tab, _, _) = TABS[active_index]
 
     start_lists = []
     marshals = {}
@@ -68,46 +71,60 @@ def _render_page(active_index: int, selected_date: str) -> str:
 
     race_order = [SHORTER_FINAL_NAMES[name] for name in rd.NON_QUALIFIER_RACE_ORDER]
 
-    return flask.render_template(f"{active_tab}.html",
-                                 tabs=TABS,
-                                 authenticated_tabs=AUTHENTICATED_TABS,
-                                 db_dates=enumerate(db_dates),
-                                 active_tab=active_tab,
-                                 active_tab_readable=active_tab_readable,
-                                 active_tab_icon=active_tab_icon,
-                                 selected_date=selected_date,
-                                 start_lists=start_lists,
-                                 marshals=marshals,
-                                 results=results,
-                                 result_table_classes=RESULT_TABLE_CLASSES,
-                                 points=points,
-                                 race_order=race_order,
-                                 active_index=active_index,
-                                 is_authenticated=is_authenticated,
-                                 )
+    return _render_general_page(active_index,
+                                selected_date,
+                                selected_season,
+                                start_lists=start_lists,
+                                marshals=marshals,
+                                results=results,
+                                points=points,
+                                race_order=race_order
+                                )
 
 
-def _render_individual_result_page(selected_date: str, result: rd.RaceResult) -> str:
+def _render_individual_result_page(selected_date: str, result: rd.RaceResult, selected_season: int) -> str:
     active_index = 1
-    db_dates = rd.get_all_dates()
-    _, (active_tab, active_tab_readable, active_tab_icon) = TABS[active_index]
-
     laptimes_json = _create_laptimes_json(result)
 
-    return flask.render_template("resultdetails.html",
-                                 tabs=TABS,
-                                 db_dates=enumerate(db_dates),
+    return _render_general_page(active_index,
+                                selected_date,
+                                selected_season,
+                                template_name="resultdetails.html",
+                                laptimes_json=laptimes_json,
+                                results=result,
+                                group=result.group,
+                                heat_name=result.heat_name,
+                                rcclass=result.rcclass,
+                                )
+
+
+def _render_general_page(active_index: int, selected_date: str,
+                         selected_season: int, template_name: str = None, **kwargs) -> str:
+    is_authenticated = current_user.is_authenticated
+
+    dates, filenames, locations = models.get_race_dates_filenames_and_locations(selected_season)
+
+    # TODO find a way to avoid having to fetch this from the database every time
+    all_seasons = models.get_all_season_years()
+
+    _, (active_tab, active_tab_readable, active_tab_icon) = TABS[active_index]
+
+    return flask.render_template(f"{active_tab}.html" if template_name is None else template_name,
+                                 active_index=active_index,
                                  active_tab=active_tab,
-                                 active_tab_readable=active_tab_readable,
                                  active_tab_icon=active_tab_icon,
-                                 selected_date=selected_date,
-                                 heat_name=result.heat_name,
-                                 rcclass=result.rcclass,
-                                 group=result.group,
-                                 results=result,
-                                 laptimes_json=laptimes_json,
+                                 active_tab_readable=active_tab_readable,
+                                 all_seasons=all_seasons,
+                                 authenticated_tabs=AUTHENTICATED_TABS,
+                                 db_dates=enumerate(dates),
+                                 is_authenticated=is_authenticated,
+                                 locations=locations,
                                  result_table_classes=RESULT_TABLE_CLASSES,
-                                 active_index=active_index)
+                                 selected_date=selected_date,
+                                 tabs=TABS,
+                                 year=selected_season,
+                                 **kwargs
+                                 )
 
 
 def _create_laptimes_json(result):
@@ -146,23 +163,31 @@ def logout():
     return flask.redirect(flask.url_for("main_bp.index"))
 
 
+@main_bp.get(f"/{START_LISTS_TAB}/<year>")
+def start_lists_default_with_year(year):
+    latest = rd.get_all_dates()[0]
+    return flask.redirect(flask.url_for("main_bp.start_lists_page", year=year, date=latest))
+
+
 @main_bp.get(f"/{START_LISTS_TAB}")
 def start_lists_default():
-    latest = rd.get_all_dates()[0]
-    return flask.redirect(f"/{START_LISTS_TAB}/2022/{latest}")
+    latest_season = models.get_latest_season()
+    latest = models.get_latest_date(latest_season)
+    return flask.redirect(flask.url_for("main_bp.start_lists_page", year=latest_season, date=latest))
 
 
 @main_bp.get(f"/{RESULTS_TAB}")
 def results_default():
-    latest = rd.get_all_dates()[0]
-    return flask.redirect(f"/{RESULTS_TAB}/2022/{latest}")
+    latest_season = models.get_latest_season()
+    latest = models.get_latest_date(latest_season)
+    return flask.redirect(flask.url_for("main_bp.results_page", year=latest_season, date=latest))
 
 
 @main_bp.get(f"/{POINTS_TAB}")
 def points_default():
-    latest = rd.get_all_dates()[0]
-    # TODO fix year
-    return flask.redirect(f"/{POINTS_TAB}/2022/{latest}")
+    latest_season = models.get_latest_season()
+    latest = models.get_latest_date(latest_season)
+    return flask.redirect(flask.url_for("main_bp.points_page", year=latest_season, date=latest))
 
 
 # TODO could you do the following three endpoints as a macro?
@@ -170,14 +195,14 @@ def points_default():
 def start_lists_page(year, date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{START_LISTS_TAB}")
-    return _render_page(active_index=0, selected_date=date)
+    return _render_page(active_index=0, selected_date=date, selected_season=year)
 
 
 @main_bp.get(f"/{RESULTS_TAB}/<year>/<date>")
 def results_page(year, date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{RESULTS_TAB}")
-    return _render_page(active_index=1, selected_date=date)
+    return _render_page(active_index=1, selected_date=date, selected_season=year)
 
 
 @main_bp.get(f"/{RESULTS_TAB}/<year>/<date>/race")
@@ -203,17 +228,11 @@ def results_details_page(year, date):
     if result is None:
         return flask.redirect(f"/{RESULTS_TAB}")
 
-    return _render_individual_result_page(date, result)
+    return _render_individual_result_page(date, result, selected_season=year)
 
 
 @main_bp.get(f"/{POINTS_TAB}/<year>/<date>")
 def points_page(year, date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{POINTS_TAB}")
-    return _render_page(active_index=2, selected_date=date)
-
-
-@main_bp.get("/<path:path>")
-def get_static(path):
-    return flask.send_from_directory("static", path)
-
+    return _render_page(active_index=2, selected_date=date, selected_season=year)

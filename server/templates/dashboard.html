@@ -14,36 +14,36 @@
 </head>
 <body>
 <header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
-  <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6" href="/">RCBash</a>
+  <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6" href="/">RCBash Manager</a>
   <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
     <span class="navbar-toggler-icon"></span>
   </button>
-  <div class="dropdown w-100">
-    <a class="btn btn-secondary dropdown-toggle form-control form-control-dark w-100" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-      {{ selected_date }}<span class="weak"> - Klicka för att byta dag</span>
-    </a>
-
-    <ul class="dropdown-menu day-dropdown">
-      {% for i, date in db_dates %}
-      <li><a class="dropdown-item" href="/{{ active_tab }}/{{ year }}/{{ date }}">{{ date if i > 0 else date + " - senaste"}}</a></li>
-        {% if i == 0 %}
-          <li><hr class="dropdown-divider"></li>
-        {% endif %}
-
-      {% endfor %}
-    </ul>
-  </div>
 </header>
 
 <div class="container-fluid">
   <div class="row">
     <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+      <div class="dropdown day-dropdown">
+        <a class="btn btn-secondary dropdown-toggle form-control w-100" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+          {{ selected_date }}
+        </a>
+
+        <ul class="dropdown-menu">
+          {% for i, date in db_dates %}
+          <li><a class="dropdown-item" href="/{{ active_tab }}/{{ year }}/{{ date }}"><b>{{ locations[i] }}</b> {{ date if i > 0 else date + " - senaste"}}</a></li>
+          {% if i == 0 %}
+          <li><hr class="dropdown-divider"></li>
+          {% endif %}
+
+          {% endfor %}
+        </ul>
+      </div>
       <div class="position-sticky pt-3 sidebar-sticky">
         <ul class="nav flex-column">
           {% for i, (key, name, icon) in tabs %}
           <li class="nav-item">
             <a class="{{ 'nav-link active' if i == active_index else 'nav-link' }}"
-               aria-current="page" href="/{{ key }}/{{ selected_date }}">
+               aria-current="page" href="/{{ key }}/{{ year }}/{{ selected_date }}">
               <span data-feather="{{ icon }}" class="align-text-bottom"></span>
               {{ name }}
             </a>
@@ -70,6 +70,10 @@
           </a>
 
           {% endif %}
+          <a class="nav-link pointer" aria-current="page" data-bs-toggle="modal" data-bs-target="#seasonModal">
+            <span data-feather="corner-up-right" class="align-text-bottom"></span>
+            Byt säsong...
+          </a>
         </ul>
       </div>
     </nav>
@@ -78,6 +82,35 @@
       <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
         <h1 class="h1">{% block tab_title %}{% endblock %}</h1>
       </div>
+
+      <!-- Modal -->
+      <div class="modal fade" id="seasonModal" tabindex="-1" aria-labelledby="seasonModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content season-modal">
+            <div class="modal-header">
+              <h1 class="modal-title fs-5" id="seasonModalLabel">Välj säsong</h1>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="dropdown season-dropdown">
+                <button class="btn btn-secondary dropdown-toggle season-dropdown-text" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  {{ year }}
+                </button>
+                <ul class="dropdown-menu">
+                  {% for season_year in all_seasons %}
+                    <li><a class="dropdown-item" href="/{{ active_tab }}/{{ season_year }}">{{ season_year }}</a></li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Stäng</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
       {% block content %}{% endblock %}
     </main>
   </div>

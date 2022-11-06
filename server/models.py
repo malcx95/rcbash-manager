@@ -113,41 +113,67 @@ class Race(db.Model):
 
     year = db.Column(
         db.Integer(),
+        nullable=False,
+    )
+
+    location = db.Column(
+        db.String(50),
+        nullable=False,
     )
 
     date = db.Column(
         db.Date(),
-        unique=True
+        unique=True,
+        nullable=False,
     )
 
     filename = db.Column(
         db.String(50),
-        unique=True
+        unique=True,
+        nullable=False,
     )
 
 
-def get_races(season=None) -> List[Tuple[int, datetime.date, Path]]:
-    races = db.session.query(Race) \
-        if season is None else db.session.query(Race).filter_by(year=season)
-    return [
-        (race.year, race.date, RESULT_FOLDER_PATH / (race.filename + ".json"))
+def get_all_season_years() -> List[int]:
+    years = [y[0] for y in db.session.query(Race.year).distinct()]
+    return sorted(years, reverse=True)
+
+
+def get_latest_season() -> int:
+    return get_all_season_years()[0]
+
+
+def get_latest_date(season: int) -> str:
+    date, = db.session.query(Race.date).filter_by(year=season).order_by(Race.date.desc()).first()
+    return date.strftime("%Y-%m-%d")
+
+
+def get_race_dates_filenames_and_locations(season: int) -> Tuple[List[str], List[Path], List[str]]:
+    races = db.session.query(Race).filter_by(year=season).order_by(Race.date.desc())
+    # this is the correct type no matter what they say
+    return zip(*[
+        (race.date.strftime("%Y-%m-%d"), RESULT_FOLDER_PATH / (race.filename + ".json"), race.location)
         for race in races
-    ]
+    ])
 
 
 def create_past_seasons_if_necessary():
     seasons = [
-        (2022, ["220430", "220528", "220702", "220806", "220903"])
+        (2022, [("220430", "Sandhem"),
+                ("220528", "Linköping"),
+                ("220702", "Nyköping"),
+                ("220806", "Slottsbron"),
+                ("220903", "Norrköping")])
     ]
     if db.session.query(Race.id).first() is None:
         for year, filenames in seasons:
-            for filename in filenames:
+            for filename, location in filenames:
                 year = int("20" + filename[0:2])
                 month = int(filename[2:4])
                 day = int(filename[4:6])
 
                 date = datetime.date(year, month, day)
-                race = Race(year=year, date=date, filename=filename)
+                race = Race(year=year, date=date, filename=filename, location=location)
                 db.session.add(race)
         db.session.commit()
 
