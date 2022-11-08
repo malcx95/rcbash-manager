@@ -1,23 +1,12 @@
 from typing import Tuple, Dict, List
 
-try:
-    from server.racelogic.duration import Duration
-    from server.racelogic.raceday import HeatStartLists
+from server.racelogic.duration import Duration
+from server.racelogic.raceday import HeatStartLists
 
-    from server.racelogic import raceday as rd
-    import server.racelogic.names
-    import server.racelogic.util as util
-    import server.racelogic.filelocation
-except ImportError:
-    # I'm sorry this is ugly
-    from duration import Duration
-    from raceday import HeatStartLists
-
-    import htmlparsing
-    import names
-    import util as util
-    import filelocation
-    import raceday as rd
+from server.racelogic import raceday as rd
+import server.racelogic.names
+import server.racelogic.util as util
+import server.racelogic.filelocation
 
 
 CLASSES = {2: "2WD", 4: "4WD"}

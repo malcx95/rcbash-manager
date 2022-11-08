@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-import sys
-import clipboard
 
 NAMES = {
     10: "S500R",

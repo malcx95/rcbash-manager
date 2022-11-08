@@ -1,9 +1,10 @@
 import unittest
 import os
+from pathlib import Path
 
-import htmlparsing
+import server.racelogic.htmlparsing as htmlparsing
 
-from duration import Duration
+from server.racelogic.duration import Duration
 
 
 EXPECTED_RESULTS = {
@@ -92,7 +93,7 @@ class HtmlParsingTests(unittest.TestCase):
 
         for test_file, expected_results in EXPECTED_RESULTS.items():
             with self.subTest(f"Test file {test_file}"):
-                filepath = os.path.join("testdata", test_file)
+                filepath = Path(__file__).parent / "testdata" / test_file
 
                 with open(filepath, encoding="utf-16-le") as f:
                     contents = f.read()

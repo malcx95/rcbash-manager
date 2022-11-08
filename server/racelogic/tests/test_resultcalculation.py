@@ -1,10 +1,10 @@
 from typing import Dict
 
-import raceday as rd
-import htmlparsing
-import resultcalculation
-from duration import Duration
-from raceday import QUALIFIERS_NAME, START_LISTS_KEY, RESULTS_KEY, \
+import server.racelogic.raceday as rd
+import server.racelogic.htmlparsing as htmlparsing
+import server.racelogic.resultcalculation as resultcalculation
+from server.racelogic.duration import Duration
+from server.racelogic.raceday import QUALIFIERS_NAME, START_LISTS_KEY, RESULTS_KEY, \
     ALL_PARTICIPANTS_KEY, QUARTER_FINAL_NAME, FINALS_NAME, CURRENT_HEAT_KEY
 
 import os
@@ -13,7 +13,7 @@ from pyfakefs.fake_filesystem_unittest import TestCase
 import unittest.mock as mock
 
 
-TEST_DATABASE_PATH = "testdata/testdatabases"
+TEST_DATABASE_PATH = Path(__file__).parent / "testdata" / "testdatabases"
 
 
 class ResultCalculationTests(TestCase):

@@ -2,11 +2,11 @@ from pyfakefs.fake_filesystem_unittest import TestCase
 from pathlib import Path
 import unittest
 import json
-import raceday as rd
+import server.racelogic.raceday as rd
 import os
 
 
-TEST_DATABASE_PATH = "testdata/testdatabases"
+TEST_DATABASE_PATH = Path(__file__).parent / "testdata" / "testdatabases"
 
 
 class DBTests(TestCase):
