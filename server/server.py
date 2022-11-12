@@ -1,3 +1,5 @@
+from typing import Dict, Tuple
+
 import flask
 import json
 
@@ -23,19 +25,25 @@ START_LISTS_TAB = "startlists"
 RESULTS_TAB = "results"
 POINTS_TAB = "points"
 
+SEASON_POINTS_TAB = "seasonpoints"
+
 LOGOUT_URL = "logout"
 
 RESULT_TABLE_CLASSES = {1: "winner", 2: "second", 3: "third"}
 
-TABS = list(enumerate([
-    (START_LISTS_TAB, "Startordningar", "list"),
-    (RESULTS_TAB, "Resultat", "award"),
-    (POINTS_TAB, "Poängställning", "bar-chart"),
-]))
+TABS = {
+    START_LISTS_TAB: ("Startordningar", "list"),
+    RESULTS_TAB: ("Resultat", "award"),
+    POINTS_TAB: ("Poängställning", "bar-chart"),
+}
 
 AUTHENTICATED_TABS = list(enumerate([
     (LOGOUT_URL, "Logga ut", "log-out"),
 ]))
+
+SEASON_TABS = {
+    SEASON_POINTS_TAB: ("Cupställning", "bar-chart-2"),
+}
 
 SHORTER_FINAL_NAMES = {
     rd.EIGHTH_FINAL_NAME: "Åttondel",
@@ -50,9 +58,7 @@ SHORTER_FINAL_NAMES = {
 # The result page would just have edit buttons to edit the result or add a result manually.
 
 
-def _render_page(active_index: int, selected_date: str, selected_season: int) -> str:
-    _, (active_tab, _, _) = TABS[active_index]
-
+def _render_page(active_tab: str, selected_date: str, selected_season: int) -> str:
     start_lists = []
     marshals = {}
     results = {}
@@ -71,9 +77,10 @@ def _render_page(active_index: int, selected_date: str, selected_season: int) ->
 
     race_order = [SHORTER_FINAL_NAMES[name] for name in rd.NON_QUALIFIER_RACE_ORDER]
 
-    return _render_general_page(active_index,
+    return _render_general_page(active_tab,
                                 selected_date,
                                 selected_season,
+                                TABS,
                                 start_lists=start_lists,
                                 marshals=marshals,
                                 results=results,
@@ -83,12 +90,13 @@ def _render_page(active_index: int, selected_date: str, selected_season: int) ->
 
 
 def _render_individual_result_page(selected_date: str, result: rd.RaceResult, selected_season: int) -> str:
-    active_index = 1
+    active_tab = RESULTS_TAB
     laptimes_json = _create_laptimes_json(result)
 
-    return _render_general_page(active_index,
+    return _render_general_page(active_tab,
                                 selected_date,
                                 selected_season,
+                                TABS,
                                 template_name="resultdetails.html",
                                 laptimes_json=laptimes_json,
                                 results=result,
@@ -98,8 +106,27 @@ def _render_individual_result_page(selected_date: str, result: rd.RaceResult, se
                                 )
 
 
-def _render_general_page(active_index: int, selected_date: str,
-                         selected_season: int, template_name: str = None, **kwargs) -> str:
+def _render_season_wide_page(selected_date: str, selected_season: int, active_tab: str) -> str:
+
+    season_points = None
+    num_races = 0
+
+    if active_tab == SEASON_POINTS_TAB:
+        dates, _, locations = models.get_race_dates_filenames_and_locations(selected_season)
+        season_points_per_class = rc.calculate_season_points(list(reversed(dates)), list(reversed(locations)))
+
+    return _render_general_page(active_tab,
+                                selected_date,
+                                selected_season,
+                                SEASON_TABS,
+                                template_name="totalpoints.html",
+                                season_points_per_class=season_points_per_class,
+                                )
+
+
+def _render_general_page(active_tab: str, selected_date: str,
+                         selected_season: int, tabs: Dict[str, Tuple[str, str]],
+                         template_name: str = None, **kwargs) -> str:
     is_authenticated = current_user.is_authenticated
 
     dates, filenames, locations = models.get_race_dates_filenames_and_locations(selected_season)
@@ -107,10 +134,9 @@ def _render_general_page(active_index: int, selected_date: str,
     # TODO find a way to avoid having to fetch this from the database every time
     all_seasons = models.get_all_season_years()
 
-    _, (active_tab, active_tab_readable, active_tab_icon) = TABS[active_index]
+    active_tab_readable, active_tab_icon = tabs[active_tab]
 
     return flask.render_template(f"{active_tab}.html" if template_name is None else template_name,
-                                 active_index=active_index,
                                  active_tab=active_tab,
                                  active_tab_icon=active_tab_icon,
                                  active_tab_readable=active_tab_readable,
@@ -121,7 +147,8 @@ def _render_general_page(active_index: int, selected_date: str,
                                  locations=locations,
                                  result_table_classes=RESULT_TABLE_CLASSES,
                                  selected_date=selected_date,
-                                 tabs=TABS,
+                                 season_tabs=SEASON_TABS.items(),
+                                 tabs=TABS.items(),
                                  year=selected_season,
                                  **kwargs
                                  )
@@ -165,7 +192,7 @@ def logout():
 
 @main_bp.get(f"/{START_LISTS_TAB}/<year>")
 def start_lists_default_with_year(year):
-    latest = rd.get_all_dates()[0]
+    latest = models.get_latest_date(year)
     return flask.redirect(flask.url_for("main_bp.start_lists_page", year=year, date=latest))
 
 
@@ -190,19 +217,26 @@ def points_default():
     return flask.redirect(flask.url_for("main_bp.points_page", year=latest_season, date=latest))
 
 
+@main_bp.get(f"/{SEASON_POINTS_TAB}")
+def season_points_default():
+    latest_season = models.get_latest_season()
+    latest = models.get_latest_date(latest_season)
+    return flask.redirect(flask.url_for("main_bp.season_points_page", year=latest_season, date=latest))
+
+
 # TODO could you do the following three endpoints as a macro?
 @main_bp.get(f"/{START_LISTS_TAB}/<year>/<date>")
 def start_lists_page(year, date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{START_LISTS_TAB}")
-    return _render_page(active_index=0, selected_date=date, selected_season=year)
+    return _render_page(active_tab=START_LISTS_TAB, selected_date=date, selected_season=year)
 
 
 @main_bp.get(f"/{RESULTS_TAB}/<year>/<date>")
 def results_page(year, date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{RESULTS_TAB}")
-    return _render_page(active_index=1, selected_date=date, selected_season=year)
+    return _render_page(active_tab=RESULTS_TAB, selected_date=date, selected_season=year)
 
 
 @main_bp.get(f"/{RESULTS_TAB}/<year>/<date>/race")
@@ -235,4 +269,12 @@ def results_details_page(year, date):
 def points_page(year, date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{POINTS_TAB}")
-    return _render_page(active_index=2, selected_date=date, selected_season=year)
+    return _render_page(active_tab=POINTS_TAB, selected_date=date, selected_season=year)
+
+
+@main_bp.get(f"/{SEASON_POINTS_TAB}/<year>/<date>")
+def season_points_page(year, date):
+    # TODO validate year
+    if not _is_valid_db_date(date):
+        return flask.redirect(f"/{SEASON_POINTS_TAB}")
+    return _render_season_wide_page(selected_date=date, selected_season=year, active_tab=SEASON_POINTS_TAB)

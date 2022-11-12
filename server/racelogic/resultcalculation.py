@@ -6,16 +6,37 @@ from server.racelogic.duration import Duration
 
 from server.racelogic import htmlparsing, textmessages, raceday as rd
 import server.racelogic.util as util
+import numpy as np
 
 import math
 import argparse
 import clipboard
 import copy
 
+
 # TODO make this a parameter
 MAX_NUM_PARTICIPANTS_PER_GROUP = 9
 
 MANUALLY_ENTERED_LAPS_DRIVEN = -1
+
+
+class SeasonPoints:
+
+    def __init__(self):
+        self.total_points: Dict[rd.Driver, int] = defaultdict(int)
+        self.total_points_with_drop_race: Dict[rd.Driver, int] = defaultdict(int)
+        self.drop_race_indices: Dict[rd.Driver, int] = defaultdict(int)
+        self.points_per_race: Dict[rd.Driver, List[int]] = defaultdict(list)
+        self.race_participation: Dict[rd.Driver, List[bool]] = defaultdict(list)
+        self.race_locations: List[str] = []
+
+    def num_races(self):
+        return len(self.race_locations)
+
+    def drivers_ranked_by_points_with_drop_race(self) -> List[rd.Driver]:
+        return [driver
+                for driver, _ in sorted(self.total_points_with_drop_race.items(), key=lambda item: item[1], reverse=True)
+                if driver in self.total_points]
 
 
 def _input(text):
@@ -673,6 +694,69 @@ def get_all_start_lists(raceday) -> Tuple[Iterable[Tuple[str, List]], Dict[str, 
 
         start_lists.append((heat_name, heat_start_lists))
     return reversed(start_lists), marshals
+
+
+def _get_all_participants_over_a_season(racedays: List[rd.Raceday]) -> Set[rd.Driver]:
+    all_participants = set()
+    for raceday in racedays:
+        all_participants.update(set(raceday.all_participants))
+    return all_participants
+
+
+def _remove_drivers_with_no_participation(season_points_per_class: Dict[str, SeasonPoints]):
+    drivers_to_remove = []
+    for rcclass in ("2WD", "4WD"):
+        season_points = season_points_per_class[rcclass]
+        for driver in season_points.total_points:
+            if not any(season_points.race_participation[driver]):
+                drivers_to_remove.append((rcclass, driver))
+
+    for rcclass, driver in drivers_to_remove:
+        del season_points_per_class[rcclass].total_points[driver]
+        del season_points_per_class[rcclass].total_points_with_drop_race[driver]
+        del season_points_per_class[rcclass].drop_race_indices[driver]
+        del season_points_per_class[rcclass].points_per_race[driver]
+        del season_points_per_class[rcclass].race_participation[driver]
+
+
+def calculate_season_points(race_dates: List[str], race_locations: List[str]) \
+        -> Dict[str, SeasonPoints]:
+    """
+    Calculates the cup points over a season, and returns a dictionary where
+    each rcclass is mapped to the points those drivers got.
+    """
+    # TODO add unit test
+    season_points_per_class = {"2WD": SeasonPoints(), "4WD": SeasonPoints()}
+    season_points_per_class["2WD"].race_locations = race_locations
+    season_points_per_class["4WD"].race_locations = race_locations
+    racedays = [rd.get_raceday_with_date(date) for date in race_dates]
+    all_drivers = _get_all_participants_over_a_season(racedays)
+    points_for_all_races = [_calculate_cup_points(raceday) for raceday in racedays]
+    for driver in all_drivers:
+        for race_points, points_per_heat in points_for_all_races:
+
+            rcclass = "2WD" if driver in points_per_heat["2WD"] else "4WD"
+            driver_points = race_points.get(driver, None)
+            drove_in_neither_class = driver_points is None
+
+            race_points = driver_points if not drove_in_neither_class else 0
+            season_points_per_class[rcclass].total_points[driver] += race_points
+            season_points_per_class[rcclass].total_points_with_drop_race[driver] += race_points
+            season_points_per_class[rcclass].points_per_race[driver].append(race_points)
+            season_points_per_class[rcclass].race_participation[driver].append(not drove_in_neither_class)
+
+            not_rcclass = "4WD" if rcclass == "2WD" else "2WD"
+            season_points_per_class[not_rcclass].points_per_race[driver].append(0)
+            season_points_per_class[not_rcclass].race_participation[driver].append(False)
+
+        for rcclass in ("2WD", "4WD"):
+            drop_race_index = np.argmin(season_points_per_class[rcclass].points_per_race[driver])
+            drop_race_points = season_points_per_class[rcclass].points_per_race[driver][drop_race_index]
+            season_points_per_class[rcclass].drop_race_indices[driver] = int(drop_race_index)
+            season_points_per_class[rcclass].total_points_with_drop_race[driver] -= drop_race_points
+
+    _remove_drivers_with_no_participation(season_points_per_class)
+    return season_points_per_class
 
 
 def show_current_points(verbose):

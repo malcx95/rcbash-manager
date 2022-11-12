@@ -39,6 +39,3 @@ class DBTests(TestCase):
 
                 self.assertDictEqual(rd._replace_with_durations(test_raceday_json), saved_raceday,
                                      "Saved raceday differs from loaded!")
-
-if __name__ == "__main__":
-    unittest.main()

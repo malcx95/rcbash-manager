@@ -559,3 +559,7 @@ class ResultCalculationTests(TestCase):
                                      f"Points per race for driver {num} in {rcclass} was incorrect!")
         self.assertDictEqual(points_per_race, expected_points_per_race,
                              "Points per race was incorrectly calculated! Extra drivers?")
+
+    def test_calculate_season_points(self):
+        # TODO implement
+        pass

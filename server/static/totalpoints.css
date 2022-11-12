@@ -1,0 +1,40 @@
+.heat-heading {
+  text-align: center;
+  color: #5b5b5b;
+}
+
+.results-container {
+  margin-bottom: 10px;
+  padding: 10px;
+  background-color: #eee;
+}
+
+.winner {
+  font-weight: bold;
+  color: #ac940f;
+}
+
+.second {
+  font-weight: bold;
+  color: gray;
+}
+
+.third {
+  font-weight: bold;
+  color: #d28800;
+}
+
+.result-card:hover {
+  background-color: #f9f9f9 !important;
+  transition: 0.1s;
+}
+
+.result-card:active {
+  background-color: #a8a8a8 !important;
+  color: white;
+  transition: 0.1s;
+}
+
+.drop-race {
+    color: gray !important;
+}
