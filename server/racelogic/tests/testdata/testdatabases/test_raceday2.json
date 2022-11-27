@@ -722,10 +722,7 @@
               }
             ]
           ],
-          "manual": false,
-          "dns": [
-            89
-          ]
+          "manual": false
         },
         "B": {
           "positions": [
@@ -970,10 +967,7 @@
               }
             ]
           ],
-          "manual": false,
-          "dns": [
-            89
-          ]
+          "manual": false
         },
         "B": {
           "positions": [

@@ -703,17 +703,22 @@ def _get_all_participants_over_a_season(racedays: List[rd.Raceday]) -> Set[rd.Dr
     return all_participants
 
 
+def _delete_if_exists(key: Any, dictionary: Dict):
+    if key in dictionary:
+        del dictionary[key]
+
+
 def _remove_drivers_with_no_participation(season_points_per_class: Dict[str, SeasonPoints]):
     drivers_to_remove = []
     for rcclass in ("2WD", "4WD"):
         season_points = season_points_per_class[rcclass]
-        for driver in season_points.total_points:
+        for driver in season_points.race_participation:
             if not any(season_points.race_participation[driver]):
                 drivers_to_remove.append((rcclass, driver))
 
     for rcclass, driver in drivers_to_remove:
-        del season_points_per_class[rcclass].total_points[driver]
-        del season_points_per_class[rcclass].total_points_with_drop_race[driver]
+        _delete_if_exists(driver, season_points_per_class[rcclass].total_points)
+        _delete_if_exists(driver, season_points_per_class[rcclass].total_points_with_drop_race)
         del season_points_per_class[rcclass].drop_race_indices[driver]
         del season_points_per_class[rcclass].points_per_race[driver]
         del season_points_per_class[rcclass].race_participation[driver]
@@ -725,7 +730,6 @@ def calculate_season_points(racedays: List[rd.Raceday], race_locations: List[str
     Calculates the cup points over a season, and returns a dictionary where
     each rcclass is mapped to the points those drivers got.
     """
-    # TODO add unit test
     season_points_per_class = {"2WD": SeasonPoints(), "4WD": SeasonPoints()}
     season_points_per_class["2WD"].race_locations = race_locations
     season_points_per_class["4WD"].race_locations = race_locations

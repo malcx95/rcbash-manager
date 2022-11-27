@@ -108,7 +108,7 @@ def _render_individual_result_page(selected_date: str, result: rd.RaceResult, se
 
 def _render_season_wide_page(selected_date: str, selected_season: int, active_tab: str) -> str:
 
-    season_points = None
+    season_points_per_class = None
     num_races = 0
 
     if active_tab == SEASON_POINTS_TAB:
