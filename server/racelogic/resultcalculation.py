@@ -719,7 +719,7 @@ def _remove_drivers_with_no_participation(season_points_per_class: Dict[str, Sea
         del season_points_per_class[rcclass].race_participation[driver]
 
 
-def calculate_season_points(race_dates: List[str], race_locations: List[str]) \
+def calculate_season_points(racedays: List[rd.Raceday], race_locations: List[str]) \
         -> Dict[str, SeasonPoints]:
     """
     Calculates the cup points over a season, and returns a dictionary where
@@ -729,7 +729,6 @@ def calculate_season_points(race_dates: List[str], race_locations: List[str]) \
     season_points_per_class = {"2WD": SeasonPoints(), "4WD": SeasonPoints()}
     season_points_per_class["2WD"].race_locations = race_locations
     season_points_per_class["4WD"].race_locations = race_locations
-    racedays = [rd.get_raceday_with_date(date) for date in race_dates]
     all_drivers = _get_all_participants_over_a_season(racedays)
     points_for_all_races = [_calculate_cup_points(raceday) for raceday in racedays]
     for driver in all_drivers:
