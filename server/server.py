@@ -108,12 +108,13 @@ def _render_individual_result_page(selected_date: str, result: rd.RaceResult, se
 
 def _render_season_wide_page(selected_date: str, selected_season: int, active_tab: str) -> str:
 
-    season_points = None
+    season_points_per_class = None
     num_races = 0
 
     if active_tab == SEASON_POINTS_TAB:
         dates, _, locations = models.get_race_dates_filenames_and_locations(selected_season)
-        season_points_per_class = rc.calculate_season_points(list(reversed(dates)), list(reversed(locations)))
+        racedays = [rd.get_raceday_with_date(date) for date in reversed(dates)]
+        season_points_per_class = rc.calculate_season_points(racedays, list(reversed(locations)))
 
     return _render_general_page(active_tab,
                                 selected_date,

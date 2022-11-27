@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 
 import server.racelogic.raceday as rd
 import server.racelogic.htmlparsing as htmlparsing
@@ -561,5 +561,138 @@ class ResultCalculationTests(TestCase):
                              "Points per race was incorrectly calculated! Extra drivers?")
 
     def test_calculate_season_points(self):
-        # TODO implement
-        pass
+        raceday_1 = self.test_racedays["test_raceday1"]  # full attendance
+        raceday_2 = self.test_racedays["test_raceday2"]  # driver 22 missing
+        raceday_3 = self.test_racedays["test_raceday3"]  # driver 77 went from 2WD -> 4WD and dns
+
+        locations: List[str] = ["Linköping", "Sandhem", "Slottsbron"]
+
+        expected_2wd = resultcalculation.SeasonPoints()
+        expected_2wd.points_per_race = {
+            rd.Driver(22): [100, 0, 100],
+            rd.Driver(88): [95, 100, 95],
+            rd.Driver(41): [90, 95, 90],
+
+            rd.Driver(19): [85, 90, 85],
+            rd.Driver(38): [80, 85, 80],
+            rd.Driver(77): [75, 80, 0],
+        }
+        expected_2wd.total_points = {
+            rd.Driver(22): 200,
+            rd.Driver(88): 290,
+            rd.Driver(41): 275,
+
+            rd.Driver(19): 260,
+            rd.Driver(38): 245,
+            rd.Driver(77): 155,
+        }
+        expected_2wd.total_points_with_drop_race = {
+            rd.Driver(22): 200,
+            rd.Driver(88): 195,
+            rd.Driver(41): 185,
+
+            rd.Driver(19): 175,
+            rd.Driver(38): 165,
+            rd.Driver(77): 155,
+        }
+        expected_2wd.drop_race_indices = {
+            rd.Driver(22): 1,
+            rd.Driver(88): 0,
+            rd.Driver(41): 0,
+
+            rd.Driver(19): 0,
+            rd.Driver(38): 0,
+            rd.Driver(77): 2,
+        }
+        expected_2wd.race_locations = locations
+        expected_2wd.race_participation = {
+            rd.Driver(22): [True, False, True],
+            rd.Driver(88): [True, True, True],
+            rd.Driver(41): [True, True, True],
+
+            rd.Driver(19): [True, True, True],
+            rd.Driver(38): [True, True, True],
+            rd.Driver(77): [True, True, False],
+        }
+        expected_4wd = resultcalculation.SeasonPoints()
+        expected_4wd.points_per_race = {
+            rd.Driver(90): [100, 100, 100],
+            rd.Driver(45): [95, 95, 95],
+            rd.Driver(36): [90, 90, 90],
+
+            rd.Driver(75): [85, 85, 85],
+            rd.Driver(46): [80, 80, 80],
+            rd.Driver(11): [75, 75, 75],
+            rd.Driver(77): [0, 0, 56],
+        }
+        expected_4wd.total_points = {
+            rd.Driver(90): 300,
+            rd.Driver(45): 285,
+            rd.Driver(36): 270,
+
+            rd.Driver(75): 255,
+            rd.Driver(46): 240,
+            rd.Driver(11): 225,
+            rd.Driver(77): 56,
+        }
+        expected_4wd.total_points_with_drop_race = {
+            rd.Driver(90): 200,
+            rd.Driver(45): 190,
+            rd.Driver(36): 180,
+
+            rd.Driver(75): 170,
+            rd.Driver(46): 160,
+            rd.Driver(11): 150,
+            rd.Driver(77): 56,
+        }
+        expected_4wd.drop_race_indices = {
+            rd.Driver(90): 0,
+            rd.Driver(45): 0,
+            rd.Driver(36): 0,
+
+            rd.Driver(75): 0,
+            rd.Driver(46): 0,
+            rd.Driver(11): 0,
+            rd.Driver(77): 0,
+        }
+        expected_4wd.race_participation = {
+            rd.Driver(90): [True, True, True],
+            rd.Driver(45): [True, True, True],
+            rd.Driver(36): [True, True, True],
+
+            rd.Driver(75): [True, True, True],
+            rd.Driver(46): [True, True, True],
+            rd.Driver(11): [True, True, True],
+            rd.Driver(77): [False, False, True],
+        }
+        expected_4wd.race_locations = locations
+
+        racedays = [raceday_1, raceday_2, raceday_3]
+        season_points = resultcalculation.calculate_season_points(racedays, locations)
+
+        self.assertEqual(len(season_points), 2)
+        self.assertDictEqual(season_points["2WD"].total_points,
+                             expected_2wd.total_points)
+        self.assertDictEqual(season_points["2WD"].total_points_with_drop_race,
+                             expected_2wd.total_points_with_drop_race)
+        self.assertDictEqual(season_points["2WD"].drop_race_indices,
+                             expected_2wd.drop_race_indices)
+        self.assertDictEqual(season_points["2WD"].points_per_race,
+                             expected_2wd.points_per_race)
+        self.assertDictEqual(season_points["2WD"].race_participation,
+                             expected_2wd.race_participation)
+        self.assertListEqual(season_points["2WD"].race_locations,
+                             expected_2wd.race_locations)
+
+        self.assertDictEqual(season_points["4WD"].total_points,
+                             expected_4wd.total_points)
+        self.assertDictEqual(season_points["4WD"].total_points_with_drop_race,
+                             expected_4wd.total_points_with_drop_race)
+        self.assertDictEqual(season_points["4WD"].drop_race_indices,
+                             expected_4wd.drop_race_indices)
+        self.assertDictEqual(season_points["4WD"].points_per_race,
+                             expected_4wd.points_per_race)
+        self.assertDictEqual(season_points["4WD"].race_participation,
+                             expected_4wd.race_participation)
+        self.assertListEqual(season_points["4WD"].race_locations,
+                             expected_4wd.race_locations)

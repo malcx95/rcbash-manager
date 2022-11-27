@@ -5,6 +5,7 @@ flask-login
 flask-sqlalchemy
 flask-wtf
 email_validator
+numpy
 
 pyfakefs~=4.7.0
 Werkzeug~=2.2.2
