@@ -41,6 +41,10 @@ AUTHENTICATED_TABS = list(enumerate([
     (LOGOUT_URL, "Logga ut", "log-out"),
 ]))
 
+ADMIN_TABS = list(enumerate([
+    ("Ny deltävling", "plus", "newRacedayModal"),
+]))
+
 SEASON_TABS = {
     SEASON_POINTS_TAB: ("Cupställning", "bar-chart-2"),
 }
@@ -129,6 +133,7 @@ def _render_general_page(active_tab: str, selected_date: str,
                          selected_season: int, tabs: Dict[str, Tuple[str, str]],
                          template_name: str = None, **kwargs) -> str:
     is_authenticated = current_user.is_authenticated
+    is_admin = is_authenticated and models.is_user_admin(current_user)
 
     dates, filenames, locations = models.get_race_dates_filenames_and_locations(selected_season)
 
@@ -142,8 +147,10 @@ def _render_general_page(active_tab: str, selected_date: str,
                                  active_tab_icon=active_tab_icon,
                                  active_tab_readable=active_tab_readable,
                                  all_seasons=all_seasons,
+                                 admin_tabs=ADMIN_TABS,
                                  authenticated_tabs=AUTHENTICATED_TABS,
                                  db_dates=enumerate(dates),
+                                 is_admin=is_admin,
                                  is_authenticated=is_authenticated,
                                  locations=locations,
                                  result_table_classes=RESULT_TABLE_CLASSES,
