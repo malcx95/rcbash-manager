@@ -87,16 +87,3 @@ NAMES = {
     98: "AndersF",
     99: "Perra5ive",
 }
-
-#MSG_TEMPLATE = "Nu ska {heat} köras:\n\n{participants}\n\nGör er redo och lycka till!"
-#
-#args = sys.argv[1:]
-#
-#heat_name = args[0]
-#
-#participants = [f"{i+1}. {num} - {NAMES[int(num)]}" for i, num in enumerate(args[1:])]
-#
-#message = MSG_TEMPLATE.format(heat=heat_name, participants="\n".join(participants))
-#clipboard.copy(message)
-#print(message)
-

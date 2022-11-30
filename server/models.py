@@ -185,3 +185,7 @@ def create_roles_if_necessary():
         db.session.add(admin)
         db.session.add(racer)
         db.session.commit()
+
+
+def is_user_admin(user):
+    return ADMIN_NAME in (r.name for r in user.roles)
