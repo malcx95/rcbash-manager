@@ -2,6 +2,8 @@ from pyfakefs.fake_filesystem_unittest import TestCase
 from pathlib import Path
 import unittest
 import json
+
+import server.racelogic.constants
 import server.racelogic.raceday as rd
 import os
 
@@ -24,8 +26,9 @@ class DBTests(TestCase):
                 cls.test_racedays[name] = rd._replace_with_durations(json.load(f))
 
     def setUp(self):
-        self.setUpPyfakefs(modules_to_reload=[rd])
+        self.setUpPyfakefs(modules_to_reload=[rd, server.racelogic.constants])
         rd.RESULT_FOLDER_PATH = Path("test_rcbash_results")
+        server.racelogic.constants.RESULT_FOLDER_PATH = Path("test_rcbash_results")
         rd.RESULT_FOLDER_PATH.mkdir(exist_ok=True)
 
     def test_roundtrip_serialize(self):
@@ -34,7 +37,7 @@ class DBTests(TestCase):
                 raceday = rd.Raceday(rd._replace_with_durations(test_raceday_json))
                 raceday._write_raceday(raceday_name + ".json")
                 
-                with open(rd.RESULT_FOLDER_PATH / (raceday_name + ".json")) as f:
+                with open(server.racelogic.constants.RESULT_FOLDER_PATH / (raceday_name + ".json")) as f:
                     saved_raceday = rd._replace_with_durations(json.load(f))
 
                 self.assertDictEqual(rd._replace_with_durations(test_raceday_json), saved_raceday,

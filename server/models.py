@@ -1,17 +1,18 @@
 """Database models."""
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from pathlib import Path
 
 from . import db
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from .racelogic.raceday import RESULT_FOLDER_PATH
+from .racelogic.constants import RESULT_FOLDER_PATH
+from .racelogic.names import NAMES
 
 import os
 import datetime
 
-PEPPER = os.environ["DB_PEPPER"]
+PEPPER = os.environ.get("DB_PEPPER", None)
 
 ADMIN_NAME = "Admin"
 RACER_NAME = "Racer"
@@ -73,6 +74,31 @@ class User(UserMixin, db.Model):
 
     def __repr__(self):
         return '<User {}>'.format(self.username)
+
+
+class DBDriver(db.Model):
+
+    __tablename__ = "drivers"
+
+    id = db.Column(
+        db.Integer(),
+        primary_key=True
+    )
+
+    number = db.Column(
+        db.Integer(),
+        unique=True
+    )
+
+    name = db.Column(
+        db.String(50),
+        unique=True
+    )
+
+    full_name = db.Column(
+        db.String(50),
+        nullable=True
+    )
 
 
 class Role(db.Model):
@@ -178,7 +204,25 @@ def create_past_seasons_if_necessary():
         db.session.commit()
 
 
-def create_roles_if_necessary():
+def get_driver_names() -> Dict[int, str]:
+    db_drivers = db.session.query(DBDriver)
+    return {db_driver.number: db_driver.name for db_driver in db_drivers}
+
+
+def get_driver_name(number: int) -> str:
+    name, = db.session.query(DBDriver.name).filter_by(number=number).first()
+    return name
+
+
+def create_drivers_if_necessary() -> None:
+    if db.session.query(DBDriver.id).count() == 0:
+        for number, name in NAMES.items():
+            driver = DBDriver(name=name, number=number, full_name=None)
+            db.session.add(driver)
+        db.session.commit()
+
+
+def create_roles_if_necessary() -> None:
     if db.session.query(Role.id).filter_by(name=RACER_NAME).first() is None:
         admin = Role(name=ADMIN_NAME)
         racer = Role(name=RACER_NAME)
@@ -187,5 +231,5 @@ def create_roles_if_necessary():
         db.session.commit()
 
 
-def is_user_admin(user):
+def is_user_admin(user) -> bool:
     return ADMIN_NAME in (r.name for r in user.roles)
