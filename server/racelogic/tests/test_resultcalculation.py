@@ -1,5 +1,6 @@
 from typing import Dict, List
 
+import server.racelogic.constants
 import server.racelogic.raceday as rd
 import server.racelogic.htmlparsing as htmlparsing
 import server.racelogic.resultcalculation as resultcalculation
@@ -11,7 +12,14 @@ import os
 from pathlib import Path
 from pyfakefs.fake_filesystem_unittest import TestCase
 import unittest.mock as mock
+import sys
 
+from ..names import NAMES
+
+# mock get_driver_name from models
+fake_models = mock.Mock()
+fake_models.get_driver_name = lambda number: NAMES[number]
+sys.modules["server.models"] = fake_models
 
 TEST_DATABASE_PATH = Path(__file__).parent / "testdata" / "testdatabases"
 
@@ -24,8 +32,8 @@ class ResultCalculationTests(TestCase):
     def setUpClass(cls):
         raceday_files = os.listdir(TEST_DATABASE_PATH)
         for raceday in raceday_files:
-            path = os.path.join(TEST_DATABASE_PATH, raceday)
-            name = raceday.split(".json")[0]
+            path = str(os.path.join(TEST_DATABASE_PATH, raceday))
+            name = str(raceday.split(".json")[0])
             cls.test_racedays[name] = rd.load_and_deserialize_raceday(path)
 
     def setUp(self):
@@ -35,9 +43,8 @@ class ResultCalculationTests(TestCase):
             self.clipboard = obj
 
         resultcalculation.clipboard.copy = fake_clipboard_copy
-        self.setUpPyfakefs(modules_to_reload=[rd, resultcalculation])
+        self.setUpPyfakefs(modules_to_reload=[rd, resultcalculation, server.racelogic.constants])
         rd.RESULT_FOLDER_PATH = Path("test_rcbash_results")
-        resultcalculation.rd.RESULT_FOLDER_PATH = Path("test_rcbash_results")
         rd.RESULT_FOLDER_PATH.mkdir(exist_ok=True)
 
     def tearDown(self):

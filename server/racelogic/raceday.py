@@ -1,18 +1,13 @@
 from typing import List, Dict, Tuple, Iterable, Any, Optional
 
 from server.racelogic.duration import Duration
-from server.racelogic import names
-
-from pathlib import Path
+from .constants import RESULT_FOLDER_PATH
+from ..models import get_driver_name
 
 import datetime
 import json
 
 DB_DATE_FORMAT = "%y%m%d"
-RESULT_FOLDER_PATH = Path.home() / "RCBashResults"
-# this is necessary in production
-if Path("/home/malcolm/RCBashResults").exists():
-    RESULT_FOLDER_PATH = Path("/home/malcolm/RCBashResults")
 
 ALL_PARTICIPANTS_KEY = "all_participants"
 START_LISTS_KEY = "start_lists"
@@ -67,7 +62,8 @@ class Driver:
 
     def __init__(self, number: int):
         self.number: int = number
-        self.name: str = names.NAMES[number]
+        # TODO is this inefficient?
+        self.name: str = get_driver_name(number)
 
     def __hash__(self):
         return hash(self.number)

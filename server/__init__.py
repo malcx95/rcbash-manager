@@ -24,10 +24,11 @@ def create_app():
         app.register_blueprint(server.main_bp)
         app.register_blueprint(auth.auth_bp)
 
-        # Create Raceday Models
+        # Create db Models
         db.create_all()
 
         models.create_roles_if_necessary()
         models.create_past_seasons_if_necessary()
+        models.create_drivers_if_necessary()
 
         return app
