@@ -135,6 +135,10 @@ def _render_general_page(active_tab: str, selected_date: str,
     is_authenticated = current_user.is_authenticated
     is_admin = is_authenticated and models.is_user_admin(current_user)
 
+    all_drivers = []
+    if is_admin:
+        all_drivers = models.get_all_driver_numbers_and_names()
+
     dates, filenames, locations = models.get_race_dates_filenames_and_locations(selected_season)
 
     # TODO find a way to avoid having to fetch this from the database every time
@@ -146,6 +150,7 @@ def _render_general_page(active_tab: str, selected_date: str,
                                  active_tab=active_tab,
                                  active_tab_icon=active_tab_icon,
                                  active_tab_readable=active_tab_readable,
+                                 all_drivers=all_drivers,
                                  all_seasons=all_seasons,
                                  admin_tabs=ADMIN_TABS,
                                  authenticated_tabs=AUTHENTICATED_TABS,

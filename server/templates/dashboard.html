@@ -138,21 +138,24 @@
       </div>
 
       {% if is_admin %}
+
         <div class="modal fade" id="newRacedayModal" tabindex="-1" aria-labelledby="newRacedayLabel" aria-hidden="true">
           <div class="modal-dialog">
             <div class="modal-content season-modal">
               <div class="modal-header">
-                <h1 class="modal-title fs-5" id="newRacedayLabel">Välj säsong</h1>
+                <h1 class="modal-title fs-5" id="newRacedayLabel">Ny racedag</h1>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
               </div>
               <div class="modal-body">
-                <div class="dropdown season-dropdown">
-                  <button class="btn btn-secondary dropdown-toggle season-dropdown-text" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    NÄMEN TJENA
-                  </button>
-                  <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="/">inget</a></li>
-                  </ul>
+                <div class="mb-3" id="startListTable">
+                  <start-list-input datalist="drivers"></start-list-input>
+<!--                  <label class="form-label">Lägg till förare</label>-->
+<!--                  <input list="drivers" type="text" class="form-control" id="driverInputBox">-->
+                  <datalist id="drivers">
+                    {% for number, name in all_drivers %}
+                      <option value="{{ number }}" label="{{ number }} - {{ name }}" name="{{ name }}">
+                    {% endfor %}
+                  </datalist>
                 </div>
               </div>
               <div class="modal-footer">
@@ -171,7 +174,9 @@
 <script src="/static/assets/dist/js/bootstrap.bundle.min.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/dist/feather.min.js" integrity="sha384-uO3SXW5IuS1ZpFPKugNNWqTZRRglnUJK6UAZ/gxOX80nxEkN9NcGZTftn6RzhGWE" crossorigin="anonymous"></script>
-
+<script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
+<script src="/static/js-components/component.js"></script>
+<script src="/static/js-components/startlist.js"></script>
 <script src="/static/dashboard.js"></script>
 </body>
 </html>
