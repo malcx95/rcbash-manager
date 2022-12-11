@@ -209,6 +209,11 @@ def get_driver_names() -> Dict[int, str]:
     return {db_driver.number: db_driver.name for db_driver in db_drivers}
 
 
+def get_all_driver_numbers_and_names() -> List[Tuple[int, str]]:
+    db_drivers = db.session.query(DBDriver)
+    return [(d.number, d.name) for d in db_drivers]
+
+
 def get_driver_name(number: int) -> str:
     name, = db.session.query(DBDriver.name).filter_by(number=number).first()
     return name
