@@ -148,7 +148,7 @@
               </div>
               <div class="modal-body">
                 <div class="mb-3" id="startListTable">
-                  <start-list-input datalist="drivers"></start-list-input>
+                  <start-list-input rcclass-editable=true only-editable=true datalist="drivers" rcclass="4WD" group="A"></start-list-input>
                   <datalist id="drivers">
                     {% for number, name in all_drivers %}
                       <option value="{{ number }}" label="{{ number }} - {{ name }}" name="{{ name }}">

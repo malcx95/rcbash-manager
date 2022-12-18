@@ -9,12 +9,48 @@ $(document).ready(() => {
    * för administratörer.
    */
 
+
 class StartListInput extends Component {
   constructor() {
     super();
 
     this.drivers = [];
-    //this.drivers = [{number: 90, name: "malcx95"}];
+
+    const editMode = this.hasAttribute("edit-mode")
+      ? this.getAttribute("edit-mode")
+      : false;
+
+    const editable = this.hasAttribute("editable")
+      ? this.getAttribute("editable")
+      : false;
+
+    this.onlyEditable = this.hasAttribute("only-editable")
+      ? this.getAttribute("only-editable")
+      : false;
+
+    this.rcclassEditable = this.hasAttribute("rcclass-editable")
+      ? this.getAttribute("rcclass-editable")
+      : false;
+
+    this.rcclassOptions = ["2WD", "4WD"];
+    this.groupOptions = ["A", "B"];
+
+    console.log(this.rcclassOptions);
+
+    this.editable = editable || this.onlyEditable;
+
+    this.editMode = editMode || this.onlyEditable;
+    this.shouldShowEditButton = this.editable && !this.onlyEditable;
+
+    const rcclass = this.hasAttribute("rcclass")
+      ? this.getAttribute("rcclass")
+      : "";
+
+    const group = this.hasAttribute("group")
+      ? this.getAttribute("group")
+      : "";
+
+    this.updateRcclassGroup(rcclass, group);
 
     if (!this.hasAttribute("datalist")) {
       console.error("StartList used without datalist-id");
@@ -30,35 +66,103 @@ class StartListInput extends Component {
      * Så flera startlists kan ta del av dem och synka med varandra?
      */
 
-    const rootDiv = document.createElement("div");
-    this.shadow.appendChild(rootDiv);
-
+    const rootDiv = createElementWithClass("div", [], this.container);
     this.createCSS(rootDiv);
+    this.editButton = undefined;
+    const cardBody = this.createCard(rootDiv, this.rcclass, this.group);
 
-    // Create the table element
-    const tableDiv = document.createElement("div");
-    tableDiv.classList.add("table-responsive");
-    rootDiv.appendChild(tableDiv);
-
-    const table = document.createElement("table");
-    table.classList.add("table", "table-striped", "table-sm");
-    tableDiv.appendChild(table);
+    const tableDiv = createElementWithClass("div", ["table-responsive"], cardBody);
+    const table = createElementWithClass("table", ["table", "table-striped", "table-sm"], tableDiv);
 
     this.constructTableHeader(table);
 
-    this.tableBody = document.createElement("tbody");
-    table.appendChild(this.tableBody);
-
-    this.createInputBox(rootDiv, datalistId, driversDataList);
+    this.tableBody = createElementWithClass("tbody", [], table);
+    this.createInputBox(cardBody, datalistId, driversDataList);
 
     this.updateState();
+  }
+
+  updateOptions() {
+    this.options = [];
+    this.rcclassOptions.forEach((rcclass) => {
+      this.groupOptions.forEach((group) => {
+        this.options.push({"rcclass": rcclass, "group": group});
+      });
+    });
+  }
+
+  createCard(rootDiv) {
+    const cardDiv = createElementWithClass("div", ["card", "startlistcard"], rootDiv);
+    const cardHeaderDiv = createElementWithClass("div", ["card-header", "card-header-div"], cardDiv);
+    this.cardHeadingDiv = createElementWithClass("div", ["card-heading-div"], cardHeaderDiv);
+    if (this.shouldShowEditButton)
+    {
+      this.editButton = document.createElement("button");
+      cardHeaderDiv.appendChild(this.editButton);
+    }
+    const cardBody = createElementWithClass("div", ["card-body"], cardDiv);
+    return cardBody;
+  }
+
+  updateCardHeading() {
+    this.cardHeadingDiv.textContent = "";
+    if (!this.rcclassEditable) {
+      const cardHeading = createElementWithClass("h5", [], this.cardHeadingDiv);
+      cardHeading.innerHTML = `
+        <strong>${this.rcclass}</strong> Grupp ${this.group}
+      `;
+    } else {
+      const button = createElementWithClass("h5",
+        ["editable-heading", "dropdown-toggle"], this.cardHeadingDiv);
+      button.setAttribute("data-bs-toggle", "dropdown");
+      button.setAttribute("aria-expanded", "false");
+      button.id = "dropdown" + this.rcclass + this.group;
+      button.innerHTML = `
+        <strong>${this.rcclass}</strong> Grupp ${this.group}
+        `;
+      const dropdownList = createElementWithClass("ul", ["dropdown-menu"], this.cardHeadingDiv);
+      dropdownList.setAttribute("aria-labelledby", button.id);
+      this.options.forEach((option) => {
+        const listItem = createElementWithClass("li", ["dropdown-item", "dropdown-option"], dropdownList);
+        listItem.innerHTML = `
+          <strong>${option.rcclass}</strong> Grupp ${option.group}
+        `;
+        listItem.onclick = (event) => {
+          this.updateRcclassGroup(option.rcclass, option.group);
+          this.updateState();
+        };
+      });
+    }
+  }
+
+  updateRcclassGroup(rcclass, group) {
+    this.rcclass = rcclass;
+    this.group = group;
+    this.setAttribute("rcclass", rcclass);
+    this.setAttribute("group", group);
+  }
+
+  updateEditButton() {
+    if (this.shouldShowEditButton) {
+      if (this.editMode) {
+        this.editButton.className = "";
+        this.editButton.classList.add("btn", "btn-success", "btn-sm", "edit-button");
+        this.editButton.textContent = "Klar";
+      } else {
+        this.editButton.className = "";
+        this.editButton.classList.add("btn", "btn-outline-dark", "btn-sm", "edit-button");
+        this.editButton.textContent = "Redigera";
+      }
+    }
   }
 
   updateState() {
     this.populateTable();
     let numbers = this.drivers.map((d) => d.number);
-    console.log(numbers);
+    this.updateOptions();
     this.setAttribute("value", numbers);
+    this.updateEditButton();
+    this.updateCardHeading();
   }
 
   createInputBox(rootDiv, datalistId, datalist) {
@@ -99,6 +203,25 @@ class StartListInput extends Component {
       .input-div {
         display: flex;
       }
+      h5 {
+        margin-bottom: 0px;
+      }
+      .editable-heading {
+        cursor: pointer;
+      }
+      .card-heading-div {
+        width: 90%;
+      }
+      .card-header-div {
+        display: flex;
+        flex-direction: row;
+      }
+      .edit-button {
+        font-size: 8pt;
+      }
+      .dropdown-option {
+        cursor: pointer;
+      }
     `;
     rootDiv.appendChild(style);
   }
@@ -119,6 +242,14 @@ class StartListInput extends Component {
     inputBox.oninput = (event) => {
       addButton.disabled = !(inputBox.value in this.availableDrivers);
     };
+
+    if (this.shouldShowEditButton)
+    {
+      this.editButton.onclick = (event) => {
+        this.editMode = !this.editMode;
+        this.updateState();
+      };
+    }
   }
 
   addInputToListIfValid(textbox, number, addButton) {
