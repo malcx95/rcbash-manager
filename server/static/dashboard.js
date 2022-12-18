@@ -1,4 +1,4 @@
 /* globals Chart:false, feather:false */
-$( document ).ready(() => {
+$(document).ready(() => {
   feather.replace({ 'aria-hidden': 'true' });
 });
