@@ -114,3 +114,30 @@ body {
 .season-dropdown-text {
     width: 100%;
 }
+
+.new-race-day-modal {
+    max-width: 2000px;
+    margin: 5vh;
+}
+
+.race-round-editor-content {
+    overflow-y: auto;
+    height: calc(100vh - 200px);
+}
+
+.disable-scroll {
+    overflow: hidden;
+}
+
+body.modal-open {
+    overflow: hidden;
+}
+
+.startlistcard {
+
+}
+
+.start-list-table {
+    height: 250px;
+    overflow-y: auto;
+}

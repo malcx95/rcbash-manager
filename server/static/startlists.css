@@ -1,5 +1,3 @@
-.startlistcard {
-}
 
 .heat-heading {
   text-align: center;
@@ -19,4 +17,13 @@
 
 .nowrap {
   white-space: nowrap;
+}
+
+.race-round-editor-content {
+    overflow-y: auto;
+    height: calc(100vh - 200px);
+}
+
+.new-race-day-modal {
+    overflow-y: hidden;
 }

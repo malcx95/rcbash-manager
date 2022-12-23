@@ -16,19 +16,34 @@ class Component extends HTMLElement {
     // Create a shadow root
     this.container = document.createElement("div");
     this.appendChild(this.container);
+  }
 
-    // const link = document.createElement("link");
-    // link.setAttribute("rel", "stylesheet");
-    // link.setAttribute("href", "/static/assets/dist/css/bootstrap.min.css");
-    // this.shadow.appendChild(link);
+  getDriverNumbersFromDatalist(datalist) {
+    let options = [];
+    for (let prop of datalist.options) {
+      options.push(prop.value);
+    }
+    return options;
+  }
 
-    // this.jquery = document.createElement("script");
-    // this.jquery.setAttribute("src", "https://code.jquery.com/jquery-3.6.1.min.js");
-    // this.shadow.append(this.jquery);
+  getDriverNamesFromDatalist(datalist) {
+    let options = [];
+    for (let prop of datalist.options) {
+      options.push(prop.getAttribute("name"));
+    }
+    return options;
+  }
 
-    // this.bootstrapJS = document.createElement("script");
-    // this.bootstrapJS.setAttribute("src", "/static/assets/dist/js/bootstrap.bundle.min.js");
-    // this.shadow.append(this.bootstrapJS);
+  getDriverDictionaryFromDatalist(datalist) {
+    let driverNumbers = this.getDriverNumbersFromDatalist(datalist);
+    let driverNames = this.getDriverNamesFromDatalist(datalist);
 
+    let result = {};
+
+    for (let i = 0; i < driverNames.length; i++) {
+      result[parseInt(driverNumbers[i])] = driverNames[i];
+    }
+
+    return result;
   }
 }

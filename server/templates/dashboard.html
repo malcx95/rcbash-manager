@@ -139,22 +139,20 @@
 
       {% if is_admin %}
 
-        <div class="modal fade" id="newRacedayModal" tabindex="-1" aria-labelledby="newRacedayLabel" aria-hidden="true">
-          <div class="modal-dialog">
-            <div class="modal-content season-modal">
+        <div class="modal fade disable-scroll" id="newRacedayModal" tabindex="-1" aria-labelledby="newRacedayLabel" aria-hidden="true">
+          <div class="modal-dialog new-race-day-modal">
+            <div class="modal-content">
               <div class="modal-header">
                 <h1 class="modal-title fs-5" id="newRacedayLabel">Ny racedag</h1>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
               </div>
               <div class="modal-body">
-                <div class="mb-3" id="startListTable">
-                  <start-list-input rcclass-editable=true only-editable=true datalist="drivers" rcclass="4WD" group="A"></start-list-input>
-                  <datalist id="drivers">
-                    {% for number, name in all_drivers %}
-                      <option value="{{ number }}" label="{{ number }} - {{ name }}" name="{{ name }}">
+                <race-round-editor datalist="drivers"></race-round-editor>
+                <datalist id="drivers">
+                  {% for number, name in all_drivers %}
+                  <option value="{{ number }}" label="{{ number }} - {{ name }}" name="{{ name }}">
                     {% endfor %}
-                  </datalist>
-                </div>
+                </datalist>
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Stäng</button>
@@ -175,6 +173,7 @@
 <script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
 <script src="/static/js-components/component.js"></script>
 <script src="/static/js-components/startlist.js"></script>
+<script src="/static/js-components/raceroundeditor.js"></script>
 <script src="/static/dashboard.js"></script>
 </body>
 </html>
