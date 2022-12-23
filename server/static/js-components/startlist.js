@@ -1,20 +1,16 @@
-$(document).ready(() => {
-
-  /*
-   * TODO lägg till ett normal- och edit-läge.
-   * I normal-läget ska textrutan och alla redigeringskontroller vara
-   * borta/dolda, och en edit-knapp ska finnas. Klickar man på edit-knappen
-   * går man in i edit-läget. På så sätt kan denna användas på alla ställen
-   * där startlistor används. Naturligtvis ska editläget bara vara tillgängligt
-   * för administratörer.
-   */
-
-
 class StartListInput extends Component {
-  constructor() {
+  constructor(rcclass, group, datalistId) {
     super();
 
+    /*
+     * The list of driver numbers and names which are currently inputed
+     * to this input. Each driver is represented by an object: {name: str, number: int}
+     */
     this.drivers = [];
+    this.datalistId = datalistId;
+
+    this.onDriverAdded = (driverNumberAndName) => { };
+    this.onDriverRemoved = (driverNumberAndName) => { };
 
     const editMode = this.hasAttribute("edit-mode")
       ? this.getAttribute("edit-mode")
@@ -35,32 +31,24 @@ class StartListInput extends Component {
     this.rcclassOptions = ["2WD", "4WD"];
     this.groupOptions = ["A", "B"];
 
-    console.log(this.rcclassOptions);
-
     this.editable = editable || this.onlyEditable;
 
     this.editMode = editMode || this.onlyEditable;
     this.shouldShowEditButton = this.editable && !this.onlyEditable;
 
-    const rcclass = this.hasAttribute("rcclass")
+    rcclass = this.hasAttribute("rcclass")
       ? this.getAttribute("rcclass")
-      : "";
+      : rcclass;
 
-    const group = this.hasAttribute("group")
+    group = this.hasAttribute("group")
       ? this.getAttribute("group")
-      : "";
+      : group;
 
     this.updateRcclassGroup(rcclass, group);
 
-    if (!this.hasAttribute("datalist")) {
-      console.error("StartList used without datalist-id");
-      return;
-    }
-    const datalistId = this.getAttribute("datalist");
-    let driversDataList = document.getElementById(datalistId);
-    this.allDrivers = this.getDriverDictionaryFromDatalist(driversDataList);
-    // copy allDrivers to initialize availableDrivers
-    this.availableDrivers = Object.assign({}, this.allDrivers);
+    // copy the list of available drivers
+    this.availableDrivers = {}
+    this.updateAvailableDrivers();
     /*
      * TODO kanske gör en egen datalist som kan hålla koll på availableDrivers?
      * Så flera startlists kan ta del av dem och synka med varandra?
@@ -71,15 +59,20 @@ class StartListInput extends Component {
     this.editButton = undefined;
     const cardBody = this.createCard(rootDiv, this.rcclass, this.group);
 
-    const tableDiv = createElementWithClass("div", ["table-responsive"], cardBody);
+    const tableDiv = createElementWithClass("div", ["table-responsive", "start-list-table"], cardBody);
     const table = createElementWithClass("table", ["table", "table-striped", "table-sm"], tableDiv);
 
     this.constructTableHeader(table);
 
     this.tableBody = createElementWithClass("tbody", [], table);
-    this.createInputBox(cardBody, datalistId, driversDataList);
+    this.createInputBox(cardBody, datalistId);
 
     this.updateState();
+  }
+
+  updateAvailableDrivers() {
+    let datalist = document.getElementById(this.datalistId);
+    this.availableDrivers = this.getDriverDictionaryFromDatalist(datalist);
   }
 
   updateOptions() {
@@ -165,7 +158,8 @@ class StartListInput extends Component {
     this.updateCardHeading();
   }
 
-  createInputBox(rootDiv, datalistId, datalist) {
+  createInputBox(rootDiv, datalistId) {
+    const hr = createElementWithClass("hr", [], rootDiv);
     const label = document.createElement("label");
     label.classList.add("form-label");
     label.textContent = "Lägg till förare";
@@ -187,9 +181,6 @@ class StartListInput extends Component {
     addButton.disabled = true;
     inputDiv.appendChild(addButton);
 
-    // add the datalist here again since it's not visible in the shadow DOM
-    rootDiv.appendChild(datalist);
-
     this.setUpCallbacks(input, addButton);
   }
 
@@ -197,7 +188,7 @@ class StartListInput extends Component {
     const style = document.createElement("style");
     style.textContent = `
       .add-button {
-        width: 30%;
+        width: 170px;
         margin-left: 5px;
       }
       .input-div {
@@ -228,15 +219,23 @@ class StartListInput extends Component {
 
   setUpCallbacks(inputBox, addButton) {
 
+    let onDriverSubmit = () => {
+      let driverNumberAndName = this.addInputToListIfValid(
+        inputBox, parseInt(inputBox.value), addButton);
+      if (driverNumberAndName) {
+        this.onDriverAdded(driverNumberAndName);
+      }
+    };
+
     inputBox.onkeypress = (event) => {
       var keycode = (event.keyCode ? event.keyCode : event.which);
       if (keycode == '13') {
-        this.addInputToListIfValid(event.target, event.target.value, addButton);
+        onDriverSubmit();
       }
     };
 
     addButton.onclick = (event) => {
-      this.addInputToListIfValid(inputBox, inputBox.value, addButton);
+      onDriverSubmit();
     };
 
     inputBox.oninput = (event) => {
@@ -254,11 +253,14 @@ class StartListInput extends Component {
 
   addInputToListIfValid(textbox, number, addButton) {
     if (number in this.availableDrivers) {
-      this.drivers.push({name: this.availableDrivers[number], number: number});
+      var driverNumberAndName = {name: this.availableDrivers[number], number: number}
+      this.drivers.push(driverNumberAndName);
       textbox.value = "";
       addButton.disabled = true;
       this.updateState();
+      return driverNumberAndName;
     }
+    return null;
   }
 
   populateTable() {
@@ -303,37 +305,7 @@ class StartListInput extends Component {
       headerRow.appendChild(element);
     });
   }
-
-  getDriverNumbersFromDatalist(datalist) {
-    let options = [];
-    for (let prop of datalist.options) {
-      options.push(prop.value);
-    }
-    return options;
-  }
-
-  getDriverNamesFromDatalist(datalist) {
-    let options = [];
-    for (let prop of datalist.options) {
-      options.push(prop.getAttribute("name"));
-    }
-    return options;
-  }
-
-  getDriverDictionaryFromDatalist(datalist) {
-    let driverNumbers = this.getDriverNumbersFromDatalist(datalist);
-    let driverNames = this.getDriverNamesFromDatalist(datalist);
-
-    let result = {};
-
-    for (let i = 0; i < driverNames.length; i++) {
-      result[driverNumbers[i]] = driverNames[i];
-    }
-
-    return result;
-  }
 }
 
 customElements.define("start-list-input", StartListInput);
 
-});
