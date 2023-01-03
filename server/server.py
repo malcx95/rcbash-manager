@@ -25,6 +25,8 @@ START_LISTS_TAB = "startlists"
 RESULTS_TAB = "results"
 POINTS_TAB = "points"
 
+NEW_RACE_DAY_TAB = "newraceday"
+
 SEASON_POINTS_TAB = "seasonpoints"
 
 LOGOUT_URL = "logout"
@@ -41,9 +43,9 @@ AUTHENTICATED_TABS = list(enumerate([
     (LOGOUT_URL, "Logga ut", "log-out"),
 ]))
 
-ADMIN_TABS = list(enumerate([
-    ("Ny deltävling", "plus", "newRacedayModal"),
-]))
+ADMIN_TABS = {
+    NEW_RACE_DAY_TAB: ("Ny deltävling", "plus"),
+}
 
 SEASON_TABS = {
     SEASON_POINTS_TAB: ("Cupställning", "bar-chart-2"),
@@ -129,6 +131,14 @@ def _render_season_wide_page(selected_date: str, selected_season: int, active_ta
                                 )
 
 
+def _render_admin_page(selected_date: str, selected_season: int, active_tab: str) -> str:
+    return _render_general_page(active_tab,
+                                selected_date,
+                                selected_season,
+                                ADMIN_TABS,
+                                template_name="newraceday.html")
+
+
 def _render_general_page(active_tab: str, selected_date: str,
                          selected_season: int, tabs: Dict[str, Tuple[str, str]],
                          template_name: str = None, **kwargs) -> str:
@@ -152,7 +162,7 @@ def _render_general_page(active_tab: str, selected_date: str,
                                  active_tab_readable=active_tab_readable,
                                  all_drivers=all_drivers,
                                  all_seasons=all_seasons,
-                                 admin_tabs=ADMIN_TABS,
+                                 admin_tabs=ADMIN_TABS.items(),
                                  authenticated_tabs=AUTHENTICATED_TABS,
                                  db_dates=enumerate(dates),
                                  is_admin=is_admin,
@@ -237,6 +247,13 @@ def season_points_default():
     return flask.redirect(flask.url_for("main_bp.season_points_page", year=latest_season, date=latest))
 
 
+@main_bp.get(f"/{NEW_RACE_DAY_TAB}")
+def new_race_day_default():
+    latest_season = models.get_latest_season()
+    latest = models.get_latest_date(latest_season)
+    return flask.redirect(flask.url_for("main_bp.new_race_day_page", year=latest_season, date=latest))
+
+
 # TODO could you do the following three endpoints as a macro?
 @main_bp.get(f"/{START_LISTS_TAB}/<year>/<date>")
 def start_lists_page(year, date):
@@ -291,3 +308,10 @@ def season_points_page(year, date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{SEASON_POINTS_TAB}")
     return _render_season_wide_page(selected_date=date, selected_season=year, active_tab=SEASON_POINTS_TAB)
+
+
+@main_bp.get(f"/{NEW_RACE_DAY_TAB}/<year>/<date>")
+def new_race_day_page(year, date):
+    if not _is_valid_db_date(date):
+        return flask.redirect(f"/{NEW_RACE_DAY_TAB}")
+    return _render_admin_page(active_tab=NEW_RACE_DAY_TAB, selected_date=date, selected_season=year)

@@ -120,11 +120,6 @@ body {
     margin: 5vh;
 }
 
-.race-round-editor-content {
-    overflow-y: auto;
-    height: calc(100vh - 200px);
-}
-
 .disable-scroll {
     overflow: hidden;
 }

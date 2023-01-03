@@ -66,10 +66,15 @@
         {% if is_admin %}
           <hr>
           <ul class="nav flex-column">
-            {% for i, (name, icon, modal_id) in admin_tabs %}
+            {% for key, (name, icon) in admin_tabs %}
             <li class="nav-item">
-              <a class="nav-link pointer"
-                 aria-current="page" data-bs-toggle="modal" data-bs-target="#{{ modal_id }}">
+<!--              <a class="nav-link pointer"-->
+<!--                 aria-current="page" data-bs-toggle="modal" data-bs-target="#{{ modal_id }}">-->
+<!--                <span data-feather="{{ icon }}" class="align-text-bottom"></span>-->
+<!--                {{ name }}-->
+<!--              </a>-->
+              <a class="{{ 'nav-link active' if key == active_tab else 'nav-link' }}"
+                 aria-current="page" href="/{{ key }}/{{ year }}/{{ selected_date }}">
                 <span data-feather="{{ icon }}" class="align-text-bottom"></span>
                 {{ name }}
               </a>
@@ -137,30 +142,60 @@
         </div>
       </div>
 
-      {% if is_admin %}
+<!--      {% if is_admin %}-->
 
-        <div class="modal fade disable-scroll" id="newRacedayModal" tabindex="-1" aria-labelledby="newRacedayLabel" aria-hidden="true">
-          <div class="modal-dialog new-race-day-modal">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h1 class="modal-title fs-5" id="newRacedayLabel">Ny racedag</h1>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-              </div>
-              <div class="modal-body">
-                <race-round-editor datalist="drivers"></race-round-editor>
-                <datalist id="drivers">
-                  {% for number, name in all_drivers %}
-                  <option value="{{ number }}" label="{{ number }} - {{ name }}" name="{{ name }}">
-                    {% endfor %}
-                </datalist>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Stäng</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      {% endif %}
+<!--        <div class="modal fade disable-scroll" id="newRacedayModal" tabindex="-1" aria-labelledby="newRacedayLabel" aria-hidden="true">-->
+<!--          <div class="modal-dialog new-race-day-modal">-->
+<!--            <div class="modal-content">-->
+<!--              <div class="modal-header">-->
+<!--                <h1 class="modal-title fs-5" id="newRacedayLabel">Ny racedag</h1>-->
+<!--                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>-->
+<!--              </div>-->
+<!--              <div class="modal-body">-->
+<!--                <ul class="nav nav-tabs" id="myTab">-->
+<!--                  <li class="nav-item">-->
+<!--                    <a href="#startlists" class="nav-link active" data-bs-toggle="tab">Startlistor</a>-->
+<!--                  </li>-->
+<!--                  <li class="nav-item">-->
+<!--                    <a href="#placeAndTime" class="nav-link" data-bs-toggle="tab">Tid och plats</a>-->
+<!--                  </li>-->
+<!--                </ul>-->
+<!--                <div class="tab-content">-->
+<!--                  <div class="tab-pane fade show active" id="startlists">-->
+<!--                    <race-round-editor datalist="drivers"></race-round-editor>-->
+<!--                  </div>-->
+<!--                  <div class="tab-pane fade" id="placeAndTime">-->
+<!--                    <form>-->
+<!--                      <div class="mb-3">-->
+<!--                        <label for="exampleInputEmail1" class="form-label">Email address</label>-->
+<!--                        <input type="email" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp">-->
+<!--                        <div id="emailHelp" class="form-text">We'll never share your email with anyone else.</div>-->
+<!--                      </div>-->
+<!--                      <div class="mb-3">-->
+<!--                        <label for="exampleInputPassword1" class="form-label">Password</label>-->
+<!--                        <input type="password" class="form-control" id="exampleInputPassword1">-->
+<!--                      </div>-->
+<!--                      <div class="mb-3 form-check">-->
+<!--                        <input type="checkbox" class="form-check-input" id="exampleCheck1">-->
+<!--                        <label class="form-check-label" for="exampleCheck1">Check me out</label>-->
+<!--                      </div>-->
+<!--                      <button type="submit" class="btn btn-primary">Submit</button>-->
+<!--                    </form>-->
+<!--                  </div>-->
+<!--                </div>-->
+<!--                <datalist id="drivers">-->
+<!--                  {% for number, name in all_drivers %}-->
+<!--                  <option value="{{ number }}" label="{{ number }} - {{ name }}" name="{{ name }}">-->
+<!--                    {% endfor %}-->
+<!--                </datalist>-->
+<!--              </div>-->
+<!--              <div class="modal-footer">-->
+<!--                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Stäng</button>-->
+<!--              </div>-->
+<!--            </div>-->
+<!--          </div>-->
+<!--        </div>-->
+<!--      {% endif %}-->
 
       {% block content %}{% endblock %}
     </main>

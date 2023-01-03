@@ -1,0 +1,41 @@
+{% extends "dashboard.html" %}
+{% block tab_title %}Ny deltävling{% endblock %}
+{% block content %}
+<link href="/static/newraceday.css" rel="stylesheet">
+<div class="container">
+  <form>
+    <div class="row g-3">
+      <div class="col-md-5">
+        <label for="placeInput" class="col-sm-2 col-form-label">Plats</label>
+        <input id="placeInput" type="text" class="form-control" placeholder="Linköping, Sandhem..." aria-label="Plats">
+      </div>
+      <div class="col-md-5">
+        <label for="dateInput" class="col-sm-2 col-form-label">Datum</label>
+        <input id="dateInput" type="date" class="form-control" placeholder="Last name" aria-label="Datum">
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-12">
+        <span class="dropdown new-raceday-form-button">
+          <button class="btn btn-secondary dropdown-toggle" type="button" id="addGroupDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            Lägg till grupp...
+          </button>
+          <ul id="addGroupDropdownList" class="dropdown-menu" aria-labelledby="addGroupDropdown">
+<!--            <li><a class="dropdown-item" href="#">Action</a></li>-->
+<!--            <li><a class="dropdown-item" href="#">Another action</a></li>-->
+<!--            <li><a class="dropdown-item" href="#">Something else here</a></li>-->
+          </ul>
+        </span>
+<!--        <button class="btn btn-secondary new-raceday-form-button">Lägg till heat...</button>-->
+        <button type="submit" class="btn btn-primary new-raceday-form-button">Skapa deltävling</button>
+      </div>
+    </div>
+  </form>
+  <race-round-editor datalist="drivers" add-dropdown-id="addGroupDropdownList"></race-round-editor>
+  <datalist id="drivers">
+    {% for number, name in all_drivers %}
+    <option value="{{ number }}" label="{{ number }} - {{ name }}" name="{{ name }}">
+      {% endfor %}
+  </datalist>
+</div>
+{% endblock %}
