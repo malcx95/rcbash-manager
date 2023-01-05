@@ -17,21 +17,17 @@
     <div class="row g-3">
       <div class="col-md-12">
         <span class="dropdown new-raceday-form-button">
-          <button class="btn btn-secondary dropdown-toggle" type="button" id="addGroupDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+          <button class="btn btn-secondary dropdown-toggle" type="button" id="addGroupDropdownButton" data-bs-toggle="dropdown" aria-expanded="false">
             Lägg till grupp...
           </button>
           <ul id="addGroupDropdownList" class="dropdown-menu" aria-labelledby="addGroupDropdown">
-<!--            <li><a class="dropdown-item" href="#">Action</a></li>-->
-<!--            <li><a class="dropdown-item" href="#">Another action</a></li>-->
-<!--            <li><a class="dropdown-item" href="#">Something else here</a></li>-->
           </ul>
         </span>
-<!--        <button class="btn btn-secondary new-raceday-form-button">Lägg till heat...</button>-->
         <button type="submit" class="btn btn-primary new-raceday-form-button">Skapa deltävling</button>
       </div>
     </div>
   </form>
-  <race-round-editor datalist="drivers" add-dropdown-id="addGroupDropdownList"></race-round-editor>
+  <race-round-editor datalist="drivers" add-dropdown-button-id="addGroupDropdownButton" add-dropdown-list-id="addGroupDropdownList"></race-round-editor>
   <datalist id="drivers">
     {% for number, name in all_drivers %}
     <option value="{{ number }}" label="{{ number }} - {{ name }}" name="{{ name }}">

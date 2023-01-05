@@ -11,6 +11,7 @@ class StartListInput extends Component {
 
     this.onDriverAdded = (driverNumberAndName) => { };
     this.onDriverRemoved = (driverNumberAndName) => { };
+    this.onDeleteClicked = (startListInput) => { };
 
     const editMode = this.hasAttribute("edit-mode")
       ? this.getAttribute("edit-mode")
@@ -18,6 +19,10 @@ class StartListInput extends Component {
 
     const editable = this.hasAttribute("editable")
       ? this.getAttribute("editable")
+      : false;
+
+    this.deletable = this.hasAttribute("deletable")
+      ? this.getAttribute("deletable")
       : false;
 
     this.onlyEditable = this.hasAttribute("only-editable")
@@ -93,6 +98,14 @@ class StartListInput extends Component {
       this.editButton = document.createElement("button");
       cardHeaderDiv.appendChild(this.editButton);
     }
+
+    this.deleteButton = createElementWithClass(
+      "button", ["btn", "btn-link", "btn-sm", "delete-list-button"], cardHeaderDiv);
+    this.deleteButton.innerHTML = `
+      <span data-feather="trash-2" class="align-text-bottom"></span>
+    `;
+    this.deleteButton.onclick = (event) => { this.onDeleteClicked(this) };
+
     const cardBody = createElementWithClass("div", ["card-body"], cardDiv);
     return cardBody;
   }
@@ -126,6 +139,12 @@ class StartListInput extends Component {
         };
       });
     }
+
+    this.deleteButton.style.display = this.deletable ? "block" : "none";
+
+    // update the feather icons since they don't automatically
+    // respond to the display property
+    feather.replace();
   }
 
   updateRcclassGroup(rcclass, group) {
@@ -213,6 +232,11 @@ class StartListInput extends Component {
       .dropdown-option {
         cursor: pointer;
       }
+      .delete-list-button {
+        color: #5F5F5F;
+        padding: 0px;
+        margin-left: 20px;
+      }
     `;
     rootDiv.appendChild(style);
   }
@@ -229,7 +253,7 @@ class StartListInput extends Component {
 
     inputBox.onkeypress = (event) => {
       var keycode = (event.keyCode ? event.keyCode : event.which);
-      if (keycode == '13') {
+      if (keycode === 13) {
         onDriverSubmit();
       }
     };
@@ -265,12 +289,6 @@ class StartListInput extends Component {
 
   populateTable() {
     this.tableBody.textContent = "";
-
-    // if (this.drivers.length == 0) {
-    //   const span = document.createElement("span");
-    //   tbody.appendChild(span);
-    //   span.textContent = "Lägg till förare";
-    // }
 
     this.drivers.forEach((numberAndName, i) => {
       const tr = document.createElement("tr");
