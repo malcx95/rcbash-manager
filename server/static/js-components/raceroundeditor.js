@@ -90,9 +90,10 @@ class RaceRoundEditor extends Component {
   createStartListInput(rcclass, group) {
     const startListInput = new StartListInput(rcclass, group, AVAILABLE_DRIVERS_ID);
     startListInput.rcclassEditable = false;
-    startListInput.onlyEditable = true;
+    startListInput.setOnlyEditable(true);
     startListInput.deletable = false;
-    startListInput.onDriverAdded = (d) => this.onDriverAdded(d);
+    startListInput.onDriverAdded = (d) => this.updateAvailableDrivers();
+    startListInput.onDriverRemoved = (d) => this.updateAvailableDrivers();
     startListInput.onDeleteClicked = (s) => this.onStartListDeleted(s);
     this.startListInputs.push(startListInput);
   }
@@ -178,10 +179,6 @@ class RaceRoundEditor extends Component {
     this.startListInputs.forEach((startListInput) => {
       startListInput.updateAvailableDrivers();
     });
-  }
-
-  onDriverAdded(driverNumber) {
-    this.updateAvailableDrivers();
   }
 
   createCSS(rootDiv) {
