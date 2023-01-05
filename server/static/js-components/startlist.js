@@ -33,9 +33,6 @@ class StartListInput extends Component {
       ? this.getAttribute("rcclass-editable")
       : false;
 
-    this.rcclassOptions = ["2WD", "4WD"];
-    this.groupOptions = ["A", "B"];
-
     this.editable = editable || this.onlyEditable;
 
     this.editMode = editMode || this.onlyEditable;
@@ -75,18 +72,14 @@ class StartListInput extends Component {
     this.updateState();
   }
 
+  setOnlyEditable(val) {
+    this.onlyEditable = val;
+    this.editMode = this.editMode || val;
+  }
+
   updateAvailableDrivers() {
     let datalist = document.getElementById(this.datalistId);
     this.availableDrivers = this.getDriverDictionaryFromDatalist(datalist);
-  }
-
-  updateOptions() {
-    this.options = [];
-    this.rcclassOptions.forEach((rcclass) => {
-      this.groupOptions.forEach((group) => {
-        this.options.push({"rcclass": rcclass, "group": group});
-      });
-    });
   }
 
   createCard(rootDiv) {
@@ -171,7 +164,6 @@ class StartListInput extends Component {
   updateState() {
     this.populateTable();
     let numbers = this.drivers.map((d) => d.number);
-    this.updateOptions();
     this.setAttribute("value", numbers);
     this.updateEditButton();
     this.updateCardHeading();
@@ -237,6 +229,10 @@ class StartListInput extends Component {
         padding: 0px;
         margin-left: 20px;
       }
+      .edit-driver-button {
+        color: #5F5F5F;
+        padding: 0px;
+      }
     `;
     rootDiv.appendChild(style);
   }
@@ -291,36 +287,85 @@ class StartListInput extends Component {
     this.tableBody.textContent = "";
 
     this.drivers.forEach((numberAndName, i) => {
-      const tr = document.createElement("tr");
-      this.tableBody.appendChild(tr);
+      const tr = createElementWithClass("tr", [], this.tableBody);
 
-      const positionCell = document.createElement("th");
+      const positionCell = createElementWithClass("td", [], tr);
       positionCell.setAttribute("scope", "row");
-      positionCell.innerHTML = i + 1;
-      tr.appendChild(positionCell);
+      positionCell.innerHTML = `<strong>${i + 1}</strong>`;
 
-      const numberCell = document.createElement("td");
+      const numberCell = createElementWithClass("td", [], tr);
       numberCell.innerHTML = numberAndName.number;
-      tr.appendChild(numberCell);
 
-      const nameCell = document.createElement("td");
+      const nameCell = createElementWithClass("td", [], tr);
       nameCell.innerHTML = numberAndName.name;
-      tr.appendChild(nameCell);
+
+      const upCell = createElementWithClass("td", [], tr);
+      const downCell = createElementWithClass("td", [], tr);
+      const deleteCell = createElementWithClass("td", [], tr);
+      if (this.editMode) {
+
+        const upButton = createElementWithClass(
+          "button", ["btn", "btn-link", "btn-sm", "edit-driver-button"], upCell);
+        upButton.innerHTML = `
+          <span data-feather="chevron-up" class="align-text-bottom"></span>
+        `;
+        upButton.onclick = (event) => {
+          // swap this driver with the driver directly above
+          [this.drivers[i - 1], this.drivers[i]] = [this.drivers[i], this.drivers[i - 1]];
+          this.updateState();
+        };
+        if (i === 0) {
+          // disable the button if we are at the top already
+          upButton.setAttribute("disabled", true);
+        }
+
+        const downButton = createElementWithClass(
+          "button", ["btn", "btn-link", "btn-sm", "edit-driver-button"], downCell);
+        downButton.innerHTML = `
+          <span data-feather="chevron-down" class="align-text-bottom"></span>
+        `;
+        downButton.onclick = (event) => {
+          // swap this driver with the driver directly below
+          [this.drivers[i + 1], this.drivers[i]] = [this.drivers[i], this.drivers[i + 1]];
+          this.updateState();
+        };
+        if (i === this.drivers.length - 1) {
+          // disable the button if we are at the bottom already
+          downButton.setAttribute("disabled", true);
+        }
+
+        const deleteButton = createElementWithClass(
+          "button", ["btn", "btn-link", "btn-sm", "edit-driver-button"], deleteCell);
+        deleteButton.innerHTML = `
+          <span data-feather="x" class="align-text-bottom"></span>
+        `;
+        deleteButton.onclick = (event) => {
+          let newDrivers = this.drivers.filter((d, index) => index !== i);
+          this.drivers = newDrivers;
+          this.updateState();
+          this.onDriverRemoved(numberAndName);
+        };
+      }
+
     });
   }
 
   constructTableHeader(table) {
-    var header = document.createElement("thead");
-    table.appendChild(header);
-    var headerRow = document.createElement("tr");
-    header.appendChild(headerRow);
+    let header = createElementWithClass("thead", [], table);
+    let headerRow = createElementWithClass("tr", [], header);
 
-    var headerTitles = ["", "#", "Namn"];
+    var headerTitles = [
+      "",  // index
+      "#",  // number
+      "Namn",  // name
+      "",  // up
+      "",  // down
+      ""  // delete
+    ];
     headerTitles.forEach((title) => {
-      let element = document.createElement("th");
+      let element = createElementWithClass("th", [], headerRow);
       element.setAttribute("scope", "col");
       element.innerHTML = title;
-      headerRow.appendChild(element);
     });
   }
 }
