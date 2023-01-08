@@ -220,14 +220,23 @@ class Raceday:
         self.all_participants = number_list_to_driver_list(number_list)
 
     def set_first_qualifiers(self, participants: Dict[str, Dict[str, List]]) -> None:
+        """
+        Sets the start lists of the first qualifiers. The participants are given as
+        { rcclass: { group: [<driver number or Driver object>] } }
+        """
         self.start_lists[QUALIFIERS_NAME] = {
             rcclass: HeatStartLists(participants[rcclass], QUALIFIERS_NAME, rcclass)
             for rcclass in participants
         }
 
     def save(self) -> None:
+        """Saves the race day with today's filename."""
         filename = get_todays_filename()
         self._write_raceday(filename)
+
+    def save_as_date(self, filename_no_ext: str) -> None:
+        """Saves the race day as with the date filename YYMMDD (no json extension)"""
+        self._write_raceday(filename_no_ext + ".json")
 
     def get_current_heat(self) -> str:
         return RACE_ORDER[self.current_heat]
@@ -525,12 +534,30 @@ def _load_raceday(filename, convert_to_durations=False) -> Dict:
 
 
 def get_raceday_with_date(date: str) -> Raceday:
+    """Returns a raceday with the given date string (YYYY-MM-DD)"""
     # yeah, this may not be the best design, to convert back and forth...
-    raceday_date = datetime.datetime.strptime(date, "%Y-%m-%d").strftime(DB_DATE_FORMAT)
+    raceday_date = get_raceday_filename_str_no_ext(date)
     filename = f"{raceday_date}.json"
     with open(RESULT_FOLDER_PATH / filename) as f:
         json_raceday = json.load(f)
     return Raceday(_replace_with_durations(json_raceday))
+
+
+def get_raceday_with_filename(filename_no_ext: str) -> Raceday:
+    filename = f"{filename_no_ext}.json"
+    with open(RESULT_FOLDER_PATH / filename) as f:
+        json_raceday = json.load(f)
+    return Raceday(_replace_with_durations(json_raceday))
+
+
+def get_raceday_filename_str_no_ext(date_str: str):
+    """Converts a date of the format YYYY-MM-DD to the filename of the database (without json extension)"""
+    return datetime.datetime.strptime(date_str, "%Y-%m-%d").strftime(DB_DATE_FORMAT)
+
+
+def get_raceday_filename_date(date: datetime.date):
+    """Converts a date object to the filename of the database (without json extension)"""
+    return date.strftime(DB_DATE_FORMAT)
 
 
 def _replace_with_durations(raceday):

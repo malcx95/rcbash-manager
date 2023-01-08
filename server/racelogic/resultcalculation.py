@@ -126,7 +126,7 @@ def _confirm_group_done(start_list, rcclass, group):
     return _confirm_yes_no()
 
 
-def _remove_empty_groups(participants):
+def _remove_empty_groups(participants: Dict[str, Dict[str, List[int]]]) -> Dict[str, Dict[str, List[int]]]:
     new_participants = {}
     for rcclass, groups in participants.items():
         new_participants[rcclass] = {}
@@ -144,7 +144,7 @@ def _get_all_participants(participants):
     return all_participants
 
 
-def add_participants() -> Dict[str, Dict[str, List]]:
+def add_participants() -> Dict[str, Dict[str, List[int]]]:
     participants = {"2WD": defaultdict(list), "4WD": defaultdict(list)}
 
     classes = ["2WD", "4WD"]

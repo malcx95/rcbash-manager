@@ -204,6 +204,12 @@ def create_past_seasons_if_necessary():
         db.session.commit()
 
 
+def create_raceday(filename: str, date: datetime.date, location: str):
+    race = Race(year=date.year, date=date, filename=filename, location=location)
+    db.session.add(race)
+    db.session.commit()
+
+
 def does_season_exist(year: int) -> bool:
     return year in get_all_season_years()
 
@@ -242,3 +248,7 @@ def create_roles_if_necessary() -> None:
 
 def is_user_admin(user) -> bool:
     return ADMIN_NAME in (r.name for r in user.roles)
+
+
+def raceday_exists(date: datetime.date) -> bool:
+    return db.session.query(Race.id).filter_by(date=date).first() is not None

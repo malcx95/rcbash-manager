@@ -60,19 +60,3 @@ class LoginForm(FlaskForm):
     )
     password = PasswordField("Password", validators=[DataRequired()])
     submit = SubmitField("Log In")
-
-
-class NewRaceDayForm(FlaskForm):
-    """Form for starting a new raceday"""
-    location = StringField(
-        "Plats",
-        validators=[
-            DataRequired()
-        ]
-    )
-    date = DateField(
-        "Datum",
-        validators=[
-            DataRequired()
-        ]
-    )

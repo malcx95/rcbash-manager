@@ -30,42 +30,45 @@ let setInvalidInput = (elementId) => {
 
 let trySubmitForm = (formData) => {
   let date = formData.date;
-  
-  // first, ask if the date will create a new season
+
+  // first, ask if the date exists or will create a new season
   $.ajax({
     type: "GET",
-    url: "/api/seasonexists",
+    url: "/api/checkracedaydate",
     data: {date: date},
     dataType: "json",
     success: (data, textStatus, jqXHR) => {
-      console.log(data);
+      if (data.dateExists) {
+        showError("Det finns redan en tävling med detta datum, välj ett annat.")
+        setInvalidInput("dateInput");
+        return;
+      }
       if (!data.seasonExists) {
         if (!confirm(`Datumet ${date} kommer att skapa en ny säsong, är detta vad du vill?`)) {
           return;
         }
       }
-      
+
       // now send the actual form
       $.ajax({
         type: "POST",
         url: "/api/newraceday",
-        data: JSON.stringify(formData), 
+        data: JSON.stringify(formData),
         contentType: "application/json",
         dataType: "json",
         success: (data, textStatus, jqXHR) => {
-            console.log(data);
-            console.log(textStatus);
-            console.log(jqXHR);
+          window.location.href = data.newUrl;
+          console.log("NY RACEDAG FAN VA KUL DET SKA BLI");
         },
-        error: (errMsg) => console.error(errMsg)
+        error: (jqXHR, textStatus, errMsg) => showError(`Ett fel inträffade: ${jqXHR.responseText}`)
       });
     },
-    error: (errMsg) => showError(`Ett fel inträffade: ${errMsg}`)
+    error: (jqXHR, textStatus, errMsg) => showError(`Ett fel inträffade: ${jqXHR.responseText}`)
   });
 
 }
 
-$(document).ready(() => { 
+$(document).ready(() => {
   let submitButton = document.getElementById("submitButton");
   submitButton.onclick = (event) => {
     let placeText = document.getElementById("placeInput").value;
@@ -73,11 +76,10 @@ $(document).ready(() => {
     let startLists = document.getElementById("raceRoundEditor").getValue();
 
     let formData = {
-      place: placeText,
+      location: placeText,
       date: date,
       startLists: startLists
     };
-    console.log(formData);
 
     if (!placeText) {
       setInvalidInput("placeInput");
