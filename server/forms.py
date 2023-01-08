@@ -1,6 +1,6 @@
 """Sign-up & log-in forms."""
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, IntegerField
+from wtforms import StringField, PasswordField, SubmitField, IntegerField, DateField
 from wtforms.validators import (
     DataRequired,
     Email,
@@ -62,8 +62,17 @@ class LoginForm(FlaskForm):
     submit = SubmitField("Log In")
 
 
-class NewRacedayForm(FlaskForm):
+class NewRaceDayForm(FlaskForm):
     """Form for starting a new raceday"""
     location = StringField(
-        "Plats"
+        "Plats",
+        validators=[
+            DataRequired()
+        ]
+    )
+    date = DateField(
+        "Datum",
+        validators=[
+            DataRequired()
+        ]
     )

@@ -4,7 +4,7 @@ from typing import List, Dict, Tuple, Iterable, Callable, Any, Set, Optional
 from server.racelogic.names import NAMES
 from server.racelogic.duration import Duration
 
-from server.racelogic import htmlparsing, textmessages, raceday as rd
+from server.racelogic import htmlparsing, textmessages, raceday as rd, filelocation
 import server.racelogic.util as util
 import numpy as np
 

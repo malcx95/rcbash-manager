@@ -1,7 +1,10 @@
+from datetime import datetime
 from typing import Dict, Tuple
 
 import flask
 import json
+
+import flask_wtf.csrf
 
 import server.racelogic.resultcalculation as rc
 import server.racelogic.raceday as rd
@@ -11,6 +14,8 @@ from flask_login import login_required, logout_user, current_user, login_user
 from pathlib import Path
 
 from server import models
+from server.forms import NewRaceDayForm
+from server.racedayoperations import create_raceday_from_json, RaceDayException
 
 main_bp = Blueprint(
     "main_bp",
@@ -131,19 +136,18 @@ def _render_season_wide_page(selected_date: str, selected_season: int, active_ta
                                 )
 
 
-def _render_admin_page(selected_date: str, selected_season: int, active_tab: str) -> str:
+def _render_admin_page(selected_date: str, selected_season: int, active_tab: str, **kwargs) -> str:
     return _render_general_page(active_tab,
                                 selected_date,
                                 selected_season,
                                 ADMIN_TABS,
-                                template_name="newraceday.html")
+                                template_name="newraceday.html", **kwargs)
 
 
 def _render_general_page(active_tab: str, selected_date: str,
                          selected_season: int, tabs: Dict[str, Tuple[str, str]],
                          template_name: str = None, **kwargs) -> str:
-    is_authenticated = current_user.is_authenticated
-    is_admin = is_authenticated and models.is_user_admin(current_user)
+    is_admin, is_authenticated = check_authentication()
 
     all_drivers = []
     if is_admin:
@@ -175,6 +179,12 @@ def _render_general_page(active_tab: str, selected_date: str,
                                  year=selected_season,
                                  **kwargs
                                  )
+
+
+def check_authentication():
+    is_authenticated = current_user.is_authenticated
+    is_admin = is_authenticated and models.is_user_admin(current_user)
+    return is_admin, is_authenticated
 
 
 def _create_laptimes_json(result):
@@ -314,4 +324,43 @@ def season_points_page(year, date):
 def new_race_day_page(year, date):
     if not _is_valid_db_date(date):
         return flask.redirect(f"/{NEW_RACE_DAY_TAB}")
-    return _render_admin_page(active_tab=NEW_RACE_DAY_TAB, selected_date=date, selected_season=year)
+    is_admin, _ = check_authentication()
+    if not is_admin:
+        return flask.Response("Du måste vara administratör för att se denna sidan", 401,
+                              {'WWW-Authenticate': 'Basic realm="Login Required"'})
+    return _render_admin_page(active_tab=NEW_RACE_DAY_TAB, selected_date=date,
+                              selected_season=year)
+
+
+@main_bp.post("/api/newraceday")
+def create_new_race_day():
+    is_admin, _ = check_authentication()
+    if not is_admin:
+        return flask.Response("Du måste vara administratör för utföra denna åtgärd", 401,
+                              {'WWW-Authenticate': 'Basic realm="Login Required"'})
+    data = request.get_json()
+    print(data)
+    try:
+        create_raceday_from_json(data)
+    except RaceDayException as e:
+        return flask.Response(e.msg, 400, {})
+
+    return json.dumps({'success': True}), 200, {'ContentType': 'application/json'}
+
+
+@main_bp.get("/api/seasonexists")
+def season_exists():
+    is_admin, _ = check_authentication()
+    if not is_admin:
+        return flask.Response("Du måste vara administratör för utföra denna åtgärd", 401,
+                              {'WWW-Authenticate': 'Basic realm="Login Required"'})
+    date_str = request.args.get("date")
+    if date_str is None:
+        return flask.Response("'date' argument is missing", 400, {})
+    try:
+        date = datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        return flask.Response(f"'date' argument value {date_str} has an invalid format", 400, {})
+
+    year = date.year
+    return json.dumps({"seasonExists": models.does_season_exist(year), "year": year}), 200, {'ContentType': 'application/json'}

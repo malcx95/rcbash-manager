@@ -2,16 +2,32 @@
 {% block tab_title %}Ny deltävling{% endblock %}
 {% block content %}
 <link href="/static/newraceday.css" rel="stylesheet">
+<div id="errorAlert" class="alert alert-danger" role="alert" style="display: none;">
+  A simple warning alert—check it out!
+</div>
 <div class="container">
-  <form>
+  <form method="POST" action="/newraceday/{{ year }}/{{ date }}">
+    <script type="text/javascript">
+      // send CSRF token with AJAX calls
+
+      var csrf_token = "{{ csrf_token() }}";
+
+      $.ajaxSetup({
+        beforeSend: function(xhr, settings) {
+            if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                xhr.setRequestHeader("X-CSRFToken", csrf_token);
+            }
+        }
+    });
+    </script>
     <div class="row g-3">
       <div class="col-md-5">
         <label for="placeInput" class="col-sm-2 col-form-label">Plats</label>
-        <input id="placeInput" type="text" class="form-control" placeholder="Linköping, Sandhem, Peking..." aria-label="Plats">
+        <input id="placeInput" type="text" class="form-control" placeholder="Linköping, Sandhem, Peking..." aria-label="Plats" required>
       </div>
       <div class="col-md-5">
         <label for="dateInput" class="col-sm-2 col-form-label">Datum</label>
-        <input id="dateInput" type="date" class="form-control" placeholder="Last name" aria-label="Datum">
+        <input id="dateInput" type="date" class="form-control" placeholder="Last name" aria-label="Datum" required>
       </div>
     </div>
     <div class="row g-3">
@@ -23,15 +39,16 @@
           <ul id="addGroupDropdownList" class="dropdown-menu" aria-labelledby="addGroupDropdown">
           </ul>
         </span>
-        <button type="submit" class="btn btn-primary new-raceday-form-button">Skapa tävling</button>
+        <button type="button" id="submitButton" class="btn btn-primary new-raceday-form-button">Skapa tävling</button>
       </div>
     </div>
   </form>
-  <race-round-editor datalist="drivers" add-dropdown-button-id="addGroupDropdownButton" add-dropdown-list-id="addGroupDropdownList"></race-round-editor>
+  <race-round-editor id="raceRoundEditor" datalist="drivers" add-dropdown-button-id="addGroupDropdownButton" add-dropdown-list-id="addGroupDropdownList"></race-round-editor>
   <datalist id="drivers">
     {% for number, name in all_drivers %}
     <option value="{{ number }}" label="{{ number }} - {{ name }}" name="{{ name }}">
       {% endfor %}
   </datalist>
 </div>
+<script src="/static/newraceday.js"></script>
 {% endblock %}
