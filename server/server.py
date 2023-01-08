@@ -14,7 +14,6 @@ from flask_login import login_required, logout_user, current_user, login_user
 from pathlib import Path
 
 from server import models
-from server.forms import NewRaceDayForm
 from server.racedayoperations import create_raceday_from_json, RaceDayException
 
 main_bp = Blueprint(
@@ -341,15 +340,16 @@ def create_new_race_day():
     data = request.get_json()
     print(data)
     try:
-        create_raceday_from_json(data)
+        year, raceday_date = create_raceday_from_json(data)
     except RaceDayException as e:
         return flask.Response(e.msg, 400, {})
 
-    return json.dumps({'success': True}), 200, {'ContentType': 'application/json'}
+    new_url = flask.url_for("main_bp.start_lists_page", year=year, date=raceday_date)
+    return json.dumps({"success": True, "newUrl": new_url}), 200, {"ContentType": "application/json"}
 
 
-@main_bp.get("/api/seasonexists")
-def season_exists():
+@main_bp.get("/api/checkracedaydate")
+def check_raceday_date():
     is_admin, _ = check_authentication()
     if not is_admin:
         return flask.Response("Du måste vara administratör för utföra denna åtgärd", 401,
@@ -358,9 +358,11 @@ def season_exists():
     if date_str is None:
         return flask.Response("'date' argument is missing", 400, {})
     try:
-        date = datetime.strptime(date_str, "%Y-%m-%d")
+        date = datetime.strptime(date_str, "%Y-%m-%d").date()
     except ValueError:
         return flask.Response(f"'date' argument value {date_str} has an invalid format", 400, {})
 
     year = date.year
-    return json.dumps({"seasonExists": models.does_season_exist(year), "year": year}), 200, {'ContentType': 'application/json'}
+    return json.dumps({"seasonExists": models.does_season_exist(year),
+                       "year": year,
+                       "dateExists": models.raceday_exists(date)}), 200, {'ContentType': 'application/json'}
