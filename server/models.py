@@ -204,6 +204,10 @@ def create_past_seasons_if_necessary():
         db.session.commit()
 
 
+def does_season_exist(year: int) -> bool:
+    return year in get_all_season_years()
+
+
 def get_driver_names() -> Dict[int, str]:
     db_drivers = db.session.query(DBDriver)
     return {db_driver.number: db_driver.name for db_driver in db_drivers}

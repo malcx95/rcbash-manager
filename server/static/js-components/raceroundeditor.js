@@ -53,6 +53,19 @@ class RaceRoundEditor extends Component {
     this.createCSS(this.container);
   }
 
+  getValue() {
+    let startLists = {};
+    this.startListInputs.forEach((input) => {
+      let rcclass = input.rcclass;
+      let group = input.group;
+      if (!(rcclass in startLists)) {
+        startLists[rcclass] = {};
+      }
+      startLists[rcclass][group] = input.drivers;
+    });
+    return startLists;
+  }
+
   updateStartListInputs() {
     this.startListInputs.sort((a, b) => {
       if (a.rcclass != b.rcclass) {

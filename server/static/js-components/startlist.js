@@ -51,11 +51,8 @@ class StartListInput extends Component {
     // copy the list of available drivers
     this.availableDrivers = {}
     this.updateAvailableDrivers();
-    /*
-     * TODO kanske gör en egen datalist som kan hålla koll på availableDrivers?
-     * Så flera startlists kan ta del av dem och synka med varandra?
-     */
 
+    this.container.classList.add("start-list-input");
     const rootDiv = createElementWithClass("div", [], this.container);
     this.createCSS(rootDiv);
     this.editButton = undefined;
@@ -232,6 +229,9 @@ class StartListInput extends Component {
       .edit-driver-button {
         color: #5F5F5F;
         padding: 0px;
+      }
+      .start-list-input {
+        margin-top: 0px;
       }
     `;
     rootDiv.appendChild(style);
