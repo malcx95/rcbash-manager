@@ -4,8 +4,6 @@ from typing import Dict, Tuple
 import flask
 import json
 
-import flask_wtf.csrf
-
 import server.racelogic.resultcalculation as rc
 import server.racelogic.raceday as rd
 
@@ -30,6 +28,7 @@ RESULTS_TAB = "results"
 POINTS_TAB = "points"
 
 NEW_RACE_DAY_TAB = "newraceday"
+NEW_RESULT_TAB = "newresult"
 
 SEASON_POINTS_TAB = "seasonpoints"
 
@@ -49,6 +48,7 @@ AUTHENTICATED_TABS = list(enumerate([
 
 ADMIN_TABS = {
     NEW_RACE_DAY_TAB: ("Ny deltävling", "plus"),
+    NEW_RESULT_TAB: ("Nytt resultat", "flag"),
 }
 
 SEASON_TABS = {
@@ -140,7 +140,7 @@ def _render_admin_page(selected_date: str, selected_season: int, active_tab: str
                                 selected_date,
                                 selected_season,
                                 ADMIN_TABS,
-                                template_name="newraceday.html", **kwargs)
+                                template_name=f"{active_tab}.html", **kwargs)
 
 
 def _render_general_page(active_tab: str, selected_date: str,
@@ -263,6 +263,13 @@ def new_race_day_default():
     return flask.redirect(flask.url_for("main_bp.new_race_day_page", year=latest_season, date=latest))
 
 
+@main_bp.get(f"/{NEW_RESULT_TAB}")
+def new_result_default():
+    latest_season = models.get_latest_season()
+    latest = models.get_latest_date(latest_season)
+    return flask.redirect(flask.url_for("main_bp.new_result_page", year=latest_season, date=latest))
+
+
 # TODO could you do the following three endpoints as a macro?
 @main_bp.get(f"/{START_LISTS_TAB}/<year>/<date>")
 def start_lists_page(year, date):
@@ -331,6 +338,19 @@ def new_race_day_page(year, date):
                               selected_season=year)
 
 
+@main_bp.get(f"/{NEW_RESULT_TAB}/<year>/<date>")
+def new_result_page(year, date):
+    if not _is_valid_db_date(date):
+        return flask.redirect(f"/{NEW_RESULT_TAB}")
+    is_admin, _ = check_authentication()
+    if not is_admin:
+        return flask.Response("Du måste vara administratör för att se denna sidan", 401,
+                              {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+    return _render_admin_page(active_tab=NEW_RESULT_TAB, selected_date=date,
+                              selected_season=year)
+
+
 @main_bp.post("/api/newraceday")
 def create_new_race_day():
     is_admin, _ = check_authentication()
@@ -338,7 +358,6 @@ def create_new_race_day():
         return flask.Response("Du måste vara administratör för utföra denna åtgärd", 401,
                               {'WWW-Authenticate': 'Basic realm="Login Required"'})
     data = request.get_json()
-    print(data)
     try:
         year, raceday_date = create_raceday_from_json(data)
     except RaceDayException as e:
