@@ -495,13 +495,8 @@ def add_new_result(drivers_to_exclude=None):
                 drivers_to_exclude.append(driver)
 
     if drivers_to_exclude:
-        for driver in drivers_to_exclude:
-            del total_times[driver.number]
-            del num_laps_driven[driver.number]
-            positions.remove(driver.number)
-            # FIXME this doesn't work in manual mode
-            best_laptimes = [(n, time) for n, time in best_laptimes if n != driver.number]
-            average_laptimes = [(n, time) for n, time in average_laptimes if n != driver.number]
+        average_laptimes, best_laptimes = exclude_drivers(drivers_to_exclude, average_laptimes, best_laptimes,
+                                                          num_laps_driven, positions, total_times)
 
     if race is None:
         print("Couldn't match the latest result with any race!")
@@ -535,6 +530,17 @@ def add_new_result(drivers_to_exclude=None):
     print(results_text)
 
     print("^^ Copied to clipboard")
+
+
+def exclude_drivers(drivers_to_exclude, average_laptimes, best_laptimes, num_laps_driven, positions, total_times):
+    for driver in drivers_to_exclude:
+        del total_times[driver.number]
+        del num_laps_driven[driver.number]
+        positions.remove(driver.number)
+        # FIXME this doesn't work in manual mode
+        best_laptimes = [(n, time) for n, time in best_laptimes if n != driver.number]
+        average_laptimes = [(n, time) for n, time in average_laptimes if n != driver.number]
+    return average_laptimes, best_laptimes
 
 
 def add_new_result_manually():

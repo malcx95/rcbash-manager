@@ -388,8 +388,12 @@ def check_raceday_date():
                        "dateExists": models.raceday_exists(date)}), 200, {'ContentType': 'application/json'}
 
 
-@main_bp.post("/api/parseresult")
-def parse_result():
+@main_bp.post("/api/parseresult/<date>")
+def parse_result(date):
+    if not _is_valid_db_date(date):
+        return flask.Response("Invalid date", 400, {})
+
+    raceday = rd.get_raceday_with_date(date)
     is_admin, _ = check_authentication()
     if not is_admin:
         return flask.Response("Du måste vara administratör för utföra denna åtgärd", 401, {})
@@ -402,7 +406,7 @@ def parse_result():
         return flask.Response("'file' argument empty", 400, {})
 
     if file and file.filename.lower().endswith(".html"):
-        result = racedayoperations.parse_html_file(file)
+        result = racedayoperations.parse_html_file(file, raceday)
         return json.dumps(result), 200, {"ContentType": "application/json"}
 
     return flask.Response("Endast html-filer kan laddas upp", 400, {})

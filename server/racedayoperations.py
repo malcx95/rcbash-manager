@@ -76,7 +76,15 @@ def create_raceday_from_json(json_data: Dict[str, Any]) -> Tuple[int, str]:
     return date.year, date_str
 
 
-def parse_html_file(file_storage: werkzeug.datastructures.FileStorage) -> Dict:
+def _replace_tuple_keys(result: Dict) -> Dict:
+    """
+    JSON cannot be serialized with tuples as keys, so this turns a dictionary into
+    one where just the driver number is mapped to the values rather than (number, driver).
+    """
+    return {number: val for (number, _), val in result.items()}
+
+
+def parse_html_file(file_storage: werkzeug.datastructures.FileStorage, raceday: rd.Raceday) -> Dict:
     file_contents_bytes = file_storage.read()
     file_contents = file_contents_bytes.decode("utf-16-le")
     parser = htmlparsing.RCMHtmlParser()
@@ -88,11 +96,20 @@ def parse_html_file(file_storage: werkzeug.datastructures.FileStorage) -> Dict:
     best_laptimes = htmlparsing.get_best_laptimes(parser)
     average_laptimes = htmlparsing.get_average_laptimes(total_times, num_laps_driven)
 
+    race_participants = rd.number_list_to_driver_list(htmlparsing.get_race_participants(parser))
+    race, rcclass, group, start_list = raceday.find_relevant_race(race_participants)
+    extra_participants = set(race_participants) - set(start_list)
+
+    # TODO exkludera förare som inte skulle varit med och visa det som en varning
+
     return util.replace_durations_with_dict({
         "totalTimes": total_times,
         "numLapsDriven": num_laps_driven,
         "positions": positions,
         "bestLaptimes": best_laptimes,
         "averageLaptimes": average_laptimes,
-        "fullResult": parser.result,
+        "fullResult": _replace_tuple_keys(parser.result),
+        "race": race,
+        "rcclass": rcclass,
+        "group": group,
     })

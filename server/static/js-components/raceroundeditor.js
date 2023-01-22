@@ -13,7 +13,7 @@ class RaceRoundEditor extends Component {
     let datalistId = this.getAttribute("datalist");
 
     let allDriversDataList = document.getElementById(datalistId);
-    this.allDrivers = this.getDriverDictionaryFromDatalist(allDriversDataList);
+    this.allDrivers = getDriverDictionaryFromDatalist(allDriversDataList);
 
     if (!this.hasAttribute("add-dropdown-list-id")) {
       console.error("RaceRoundEditor used without add-dropdown-list-id");

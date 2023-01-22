@@ -1,12 +1,17 @@
+let createDriversList = (data) => {
+  let allDriversDictionary = getDriverDictionaryFromDatalist("drivers");
+  return data.positions.map(d => {name: allDriversDictionary[d], number: d});
+}
+
 let createStartListInput = (data) => {
   let resultEditContainer = document.getElementById("resultEditContainer");
   let configuration = {
     deletable: false,
     onlyEditable: true,
     rcclassEditable: true,
-    result: data
+    drivers: createDriversList(data)
   };
-  let startListInput = new StartListInput();
+  
 };
 
 let onSuccessfulParse = (data, textStatus, jqXHR) => {

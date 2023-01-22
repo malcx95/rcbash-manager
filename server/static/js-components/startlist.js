@@ -1,12 +1,12 @@
 class StartListInput extends Component {
-  constructor(rcclass, group, datalistId, configuration) {
+  constructor(rcclass, group, datalistId, configuration, drivers) {
     super();
 
     /*
      * The list of driver numbers and names which are currently inputed
      * to this input. Each driver is represented by an object: {name: str, number: int}
      */
-    this.drivers = [];
+    this.drivers = configuration.drivers || [];
     this.datalistId = datalistId;
 
     // TODO låt fortfarande drivers-listan bestämma ordningen, men fixa en dictionary där du slår upp antalet varv och tid etc så du slipper hålla koll på den ordningen också
@@ -81,7 +81,7 @@ class StartListInput extends Component {
 
   updateAvailableDrivers() {
     let datalist = document.getElementById(this.datalistId);
-    this.availableDrivers = this.getDriverDictionaryFromDatalist(datalist);
+    this.availableDrivers = getDriverDictionaryFromDatalist(datalist);
   }
 
   createCard(rootDiv) {
