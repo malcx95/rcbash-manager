@@ -1,5 +1,5 @@
 class StartListInput extends Component {
-  constructor(rcclass, group, datalistId) {
+  constructor(rcclass, group, datalistId, configuration) {
     super();
 
     /*
@@ -9,34 +9,34 @@ class StartListInput extends Component {
     this.drivers = [];
     this.datalistId = datalistId;
 
+    // TODO låt fortfarande drivers-listan bestämma ordningen, men fixa en dictionary där du slår upp antalet varv och tid etc så du slipper hålla koll på den ordningen också
+
     this.onDriverAdded = (driverNumberAndName) => { };
     this.onDriverRemoved = (driverNumberAndName) => { };
     this.onDeleteClicked = (startListInput) => { };
 
+    if (configuration === undefined) {
+      configuration = {};
+    }
     const editMode = this.hasAttribute("edit-mode")
       ? this.getAttribute("edit-mode")
-      : false;
+      : configuration.editMode || false;
 
     const editable = this.hasAttribute("editable")
       ? this.getAttribute("editable")
-      : false;
+      : configuration.editable || false;
 
     this.deletable = this.hasAttribute("deletable")
       ? this.getAttribute("deletable")
-      : false;
+      : configuration.deletable || false;
 
     this.onlyEditable = this.hasAttribute("only-editable")
       ? this.getAttribute("only-editable")
-      : false;
+      : configuration.onlyEditable || false;
 
     this.rcclassEditable = this.hasAttribute("rcclass-editable")
       ? this.getAttribute("rcclass-editable")
-      : false;
-
-    this.editable = editable || this.onlyEditable;
-
-    this.editMode = editMode || this.onlyEditable;
-    this.shouldShowEditButton = this.editable && !this.onlyEditable;
+      : configuration.rcclassEditable || false;
 
     rcclass = this.hasAttribute("rcclass")
       ? this.getAttribute("rcclass")
@@ -45,6 +45,11 @@ class StartListInput extends Component {
     group = this.hasAttribute("group")
       ? this.getAttribute("group")
       : group;
+
+    this.editable = editable || this.onlyEditable;
+
+    this.editMode = editMode || this.onlyEditable;
+    this.shouldShowEditButton = this.editable && !this.onlyEditable;
 
     this.updateRcclassGroup(rcclass, group);
 

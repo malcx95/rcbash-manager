@@ -35,7 +35,7 @@ class RCMHtmlParser(HTMLParser):
         self._driver_index = 0
         self._result_header_index_start = 0
 
-    def parse_data(self, contents):
+    def parse_data(self, contents: str):
         self.feed(contents)
         for number_name in self.result_header:
             if number_name not in self.result:

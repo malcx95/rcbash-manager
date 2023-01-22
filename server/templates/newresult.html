@@ -2,8 +2,21 @@
 {% block tab_title %}Nytt resultat{% endblock %}
 <link href="/static/newraceday.css" rel="stylesheet">
 {% block content %}
-<div class="button-panel">
-    <button class="btn btn-primary">Ladda upp resultat</button>
+<form class="row g-3" id="fileUploadForm" method="POST" action="/api/uploadresult">
+  <div class="col-auto">
+    <input class="btn btn-primary" type="button" id="loadFileXml" value="Ladda upp resultat" onclick="document.getElementById('fileUpload').click();" />
+    <input type="file" style="display:none;" id="fileUpload" name="file"/>
+  </div>
+  <div class="col-auto">
     <button class="btn btn-secondary">Ange resultat manuellt</button>
-</div>
+  </div>
+</form>
+<datalist></datalist>
+<datalist id="drivers">
+  {% for number, name in all_drivers %}
+    <option value="{{ number }}" label="{{ number }} - {{ name }}" name="{{ name }}">
+  {% endfor %}
+</datalist>
+
+<script src="/static/newresult.js"></script>
 {% endblock %}

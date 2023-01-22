@@ -1,12 +1,3 @@
-let clearError = () => {
-  document.getElementById("errorAlert").style.display = "none";
-}
-
-let showError = (errorMsg) => {
-  let errorAlert = document.getElementById("errorAlert");
-  errorAlert.style.display = "block";
-  errorAlert.textContent = errorMsg;
-}
 
 let areAnyStartListsEmpty = (startLists) => {
   for (const [rcclass, groups] of Object.entries(startLists)) {
@@ -17,7 +8,7 @@ let areAnyStartListsEmpty = (startLists) => {
     }
   }
   return false;
-}
+};
 
 let setInvalidInput = (elementId) => {
   let input = document.getElementById(elementId);
@@ -26,7 +17,7 @@ let setInvalidInput = (elementId) => {
     input.classList.remove("is-invalid");
     input.onfocus = undefined;
   };
-}
+};
 
 let trySubmitForm = (formData) => {
   let date = formData.date;
@@ -58,7 +49,6 @@ let trySubmitForm = (formData) => {
         dataType: "json",
         success: (data, textStatus, jqXHR) => {
           window.location.href = data.newUrl;
-          console.log("NY RACEDAG FAN VA KUL DET SKA BLI");
         },
         error: (jqXHR, textStatus, errMsg) => showError(`Ett fel inträffade: ${jqXHR.responseText}`)
       });
@@ -66,7 +56,7 @@ let trySubmitForm = (formData) => {
     error: (jqXHR, textStatus, errMsg) => showError(`Ett fel inträffade: ${jqXHR.responseText}`)
   });
 
-}
+};
 
 $(document).ready(() => {
   let submitButton = document.getElementById("submitButton");

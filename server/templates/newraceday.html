@@ -2,24 +2,9 @@
 {% block tab_title %}Ny deltävling{% endblock %}
 {% block content %}
 <link href="/static/newraceday.css" rel="stylesheet">
-<div id="errorAlert" class="alert alert-danger" role="alert" style="display: none;">
-  A simple warning alert—check it out!
-</div>
 <div class="container">
+  <!-- TODO action and method are not neccessary here -->
   <form method="POST" action="/newraceday/{{ year }}/{{ date }}">
-    <script type="text/javascript">
-      // send CSRF token with AJAX calls
-
-      var csrf_token = "{{ csrf_token() }}";
-
-      $.ajaxSetup({
-        beforeSend: function(xhr, settings) {
-            if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
-                xhr.setRequestHeader("X-CSRFToken", csrf_token);
-            }
-        }
-    });
-    </script>
     <div class="row g-3">
       <div class="col-md-5">
         <label for="placeInput" class="col-sm-2 col-form-label">Plats</label>
@@ -46,8 +31,8 @@
   <race-round-editor id="raceRoundEditor" datalist="drivers" add-dropdown-button-id="addGroupDropdownButton" add-dropdown-list-id="addGroupDropdownList"></race-round-editor>
   <datalist id="drivers">
     {% for number, name in all_drivers %}
-    <option value="{{ number }}" label="{{ number }} - {{ name }}" name="{{ name }}">
-      {% endfor %}
+      <option value="{{ number }}" label="{{ number }} - {{ name }}" name="{{ name }}">
+    {% endfor %}
   </datalist>
 </div>
 <script src="/static/newraceday.js"></script>

@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 from typing import Dict, Tuple
 
@@ -8,11 +9,11 @@ import server.racelogic.resultcalculation as rc
 import server.racelogic.raceday as rd
 
 from flask import Flask, request, Blueprint
+from werkzeug.utils import secure_filename
 from flask_login import login_required, logout_user, current_user, login_user
 from pathlib import Path
 
-from server import models
-from server.racedayoperations import create_raceday_from_json, RaceDayException
+from server import models, racedayoperations
 
 main_bp = Blueprint(
     "main_bp",
@@ -359,8 +360,8 @@ def create_new_race_day():
                               {'WWW-Authenticate': 'Basic realm="Login Required"'})
     data = request.get_json()
     try:
-        year, raceday_date = create_raceday_from_json(data)
-    except RaceDayException as e:
+        year, raceday_date = racedayoperations.create_raceday_from_json(data)
+    except racedayoperations.RaceDayException as e:
         return flask.Response(e.msg, 400, {})
 
     new_url = flask.url_for("main_bp.start_lists_page", year=year, date=raceday_date)
@@ -385,3 +386,23 @@ def check_raceday_date():
     return json.dumps({"seasonExists": models.does_season_exist(year),
                        "year": year,
                        "dateExists": models.raceday_exists(date)}), 200, {'ContentType': 'application/json'}
+
+
+@main_bp.post("/api/parseresult")
+def parse_result():
+    is_admin, _ = check_authentication()
+    if not is_admin:
+        return flask.Response("Du måste vara administratör för utföra denna åtgärd", 401, {})
+
+    if "file" not in request.files:
+        return flask.Response("'file' argument missing", 400, {})
+
+    file = request.files["file"]
+    if file.filename == "":
+        return flask.Response("'file' argument empty", 400, {})
+
+    if file and file.filename.lower().endswith(".html"):
+        result = racedayoperations.parse_html_file(file)
+        return json.dumps(result), 200, {"ContentType": "application/json"}
+
+    return flask.Response("Endast html-filer kan laddas upp", 400, {})
