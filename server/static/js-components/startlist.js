@@ -1,5 +1,5 @@
 class StartListInput extends Component {
-  constructor(rcclass, group, datalistId, configuration, drivers) {
+  constructor(rcclass, group, datalistId, configuration) {
     super();
 
     /*
@@ -29,6 +29,10 @@ class StartListInput extends Component {
     this.deletable = this.hasAttribute("deletable")
       ? this.getAttribute("deletable")
       : configuration.deletable || false;
+
+    this.resultMode = this.hasAttribute("result-mode")
+      ? this.getAttribute("result-mode")
+      : configuration.resultMode || false;
 
     this.onlyEditable = this.hasAttribute("only-editable")
       ? this.getAttribute("only-editable")
@@ -64,7 +68,11 @@ class StartListInput extends Component {
     const cardBody = this.createCard(rootDiv, this.rcclass, this.group);
 
     const tableDiv = createElementWithClass("div", ["table-responsive", "start-list-table"], cardBody);
-    const table = createElementWithClass("table", ["table", "table-striped", "table-sm"], tableDiv);
+    let tableClassList = this.resultMode
+      ? ["table", "table-sm"]
+      : ["table", "table-striped", "table-sm"];
+
+    const table = createElementWithClass("table", tableClassList, tableDiv);
 
     this.constructTableHeader(table);
 
@@ -238,6 +246,19 @@ class StartListInput extends Component {
       .start-list-input {
         margin-top: 0px;
       }
+
+      .winner {
+        font-weight: bold;
+        color: #ac940f;
+      }
+      .second {
+        font-weight: bold;
+        color: gray;
+      }
+      .third {
+        font-weight: bold;
+        color: #d28800;
+      }
     `;
     rootDiv.appendChild(style);
   }
@@ -290,9 +311,13 @@ class StartListInput extends Component {
 
   populateTable() {
     this.tableBody.textContent = "";
+    let rowClasses = ["winner", "second", "third"];
 
     this.drivers.forEach((numberAndName, i) => {
-      const tr = createElementWithClass("tr", [], this.tableBody);
+      let rowClassList = this.resultMode && i <= 2
+        ? [rowClasses[i]]
+        : [];
+      const tr = createElementWithClass("tr", rowClassList, this.tableBody);
 
       const positionCell = createElementWithClass("td", [], tr);
       positionCell.setAttribute("scope", "row");

@@ -1,20 +1,36 @@
-let createDriversList = (data) => {
-  let allDriversDictionary = getDriverDictionaryFromDatalist("drivers");
-  return data.positions.map(d => {name: allDriversDictionary[d], number: d});
-}
+let createDriversList = (data, allDriversDictionary) => {
+  return data.positions.map(d => ({"name": allDriversDictionary[d], "number": d}));
+};
 
 let createStartListInput = (data) => {
   let resultEditContainer = document.getElementById("resultEditContainer");
+  let resultTableContainer = document.getElementById("resultTableContainer");
+
+  let datalist = document.getElementById("drivers");
+  let allDriversDictionary = getDriverDictionaryFromDatalist(datalist);
+
   let configuration = {
     deletable: false,
     onlyEditable: true,
-    rcclassEditable: true,
-    drivers: createDriversList(data)
+    resultMode: true,
+    rcclassEditable: false,
+    drivers: createDriversList(data, allDriversDictionary)
   };
-  
+  console.log(data.fullResult);
+  let startListInput = new StartListInput(data.rcclass, data.group, "drivers", configuration);
+  resultEditContainer.appendChild(startListInput);
+
+  let resultTable = new ResultTable(data.fullResult, allDriversDictionary);
+  resultTableContainer.appendChild(resultTable);
+
+  // HACK: you need to do this for the edit buttons to be displayed
+  feather.replace();
 };
 
 let onSuccessfulParse = (data, textStatus, jqXHR) => {
+  if (data.warningMsg) {
+    showWarning(data.warningMsg);
+  }
   createStartListInput(data);
 };
 
@@ -25,7 +41,7 @@ $(document).ready(() => {
     formData.append("file", event.target.files[0]);
     $.ajax({
       type: "POST",
-      url: "/api/parseresult",
+      url: `/api/parseresult/${CURRENT_DATE}`,
       data: formData,
       processData: false,
       contentType: false,

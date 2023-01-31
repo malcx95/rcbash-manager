@@ -5,7 +5,7 @@ import werkzeug.datastructures
 
 import server.racelogic.raceday as rd
 from server import models
-from server.racelogic import htmlparsing, util
+from server.racelogic import htmlparsing, util, resultcalculation
 
 
 class RaceDayException(Exception):
@@ -100,7 +100,12 @@ def parse_html_file(file_storage: werkzeug.datastructures.FileStorage, raceday: 
     race, rcclass, group, start_list = raceday.find_relevant_race(race_participants)
     extra_participants = set(race_participants) - set(start_list)
 
-    # TODO exkludera förare som inte skulle varit med och visa det som en varning
+    average_laptimes, best_laptimes = resultcalculation.exclude_drivers(
+        extra_participants, average_laptimes, best_laptimes, num_laps_driven, positions, total_times)
+
+    warning_msg = None
+    if extra_participants:
+        warning_msg = f"{', '.join(d.name for d in extra_participants)} skulle inte ha kört i detta lopp och har tagits bort."
 
     return util.replace_durations_with_dict({
         "totalTimes": total_times,
@@ -108,8 +113,9 @@ def parse_html_file(file_storage: werkzeug.datastructures.FileStorage, raceday: 
         "positions": positions,
         "bestLaptimes": best_laptimes,
         "averageLaptimes": average_laptimes,
-        "fullResult": _replace_tuple_keys(parser.result),
+        "fullResult": sorted(list(_replace_tuple_keys(parser.result).items()), key=len),
         "race": race,
         "rcclass": rcclass,
         "group": group,
+        "warningMsg": warning_msg
     })

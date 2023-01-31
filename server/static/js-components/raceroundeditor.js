@@ -101,7 +101,7 @@ class RaceRoundEditor extends Component {
   }
 
   createStartListInput(rcclass, group) {
-    const startListInput = new StartListInput(rcclass, group, AVAILABLE_DRIVERS_ID);
+    const startListInput = new StartListInput(rcclass, group, AVAILABLE_DRIVERS_ID, {});
     startListInput.rcclassEditable = false;
     startListInput.setOnlyEditable(true);
     startListInput.deletable = false;

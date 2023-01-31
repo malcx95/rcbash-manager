@@ -532,7 +532,13 @@ def add_new_result(drivers_to_exclude=None):
     print("^^ Copied to clipboard")
 
 
-def exclude_drivers(drivers_to_exclude, average_laptimes, best_laptimes, num_laps_driven, positions, total_times):
+def exclude_drivers(
+        drivers_to_exclude: Iterable,
+        average_laptimes: List[Tuple[int, Duration]],
+        best_laptimes: List[Tuple[int, Duration]],
+        num_laps_driven: Dict[int, int],
+        positions: List[int],
+        total_times: Dict[int, Duration]) -> Tuple[List[Tuple[int, Duration]], List[Tuple[int, Duration]]]:
     for driver in drivers_to_exclude:
         del total_times[driver.number]
         del num_laps_driven[driver.number]
