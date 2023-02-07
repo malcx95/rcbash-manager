@@ -42,6 +42,10 @@ class StartListInput extends Component {
       ? this.getAttribute("rcclass-editable")
       : configuration.rcclassEditable || false;
 
+    this.options = this.hasAttribute("options")
+      ? this.getAttribute("options")
+      : configuration.options || {rcclass: rcclass, group: group};
+
     rcclass = this.hasAttribute("rcclass")
       ? this.getAttribute("rcclass")
       : rcclass;

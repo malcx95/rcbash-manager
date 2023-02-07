@@ -6,6 +6,9 @@ let createStartListInput = (data) => {
   let resultEditContainer = document.getElementById("resultEditContainer");
   let resultTableContainer = document.getElementById("resultTableContainer");
 
+  resultEditContainer.textContent = "";
+  resultTableContainer.textContent = "";
+
   let datalist = document.getElementById("drivers");
   let allDriversDictionary = getDriverDictionaryFromDatalist(datalist);
 
@@ -16,7 +19,6 @@ let createStartListInput = (data) => {
     rcclassEditable: false,
     drivers: createDriversList(data, allDriversDictionary)
   };
-  console.log(data.fullResult);
   let startListInput = new StartListInput(data.rcclass, data.group, "drivers", configuration);
   resultEditContainer.appendChild(startListInput);
 
@@ -25,6 +27,35 @@ let createStartListInput = (data) => {
 
   // HACK: you need to do this for the edit buttons to be displayed
   feather.replace();
+};
+
+let addResultManually = () => {
+  let resultEditContainer = document.getElementById("resultEditContainer");
+  let resultTableContainer = document.getElementById("resultTableContainer");
+
+  resultEditContainer.textContent = "";
+  resultTableContainer.textContent = "";
+
+  let datalist = document.getElementById("drivers");
+  let allDriversDictionary = getDriverDictionaryFromDatalist(datalist);
+
+  let configuration = {
+    deletable: false,
+    onlyEditable: true,
+    resultMode: true,
+    rcclassEditable: true,
+    options: [
+      {rcclass: "2WD", group: "A"},
+      {rcclass: "2WD", group: "B"},
+      {rcclass: "2WD", group: "C"},
+      {rcclass: "4WD", group: "A"},
+      {rcclass: "4WD", group: "B"},
+      {rcclass: "4WD", group: "C"}
+    ]
+  };
+
+  let startListInput = new StartListInput("2WD", "A", "drivers", configuration);
+  resultEditContainer.appendChild(startListInput);
 };
 
 let onSuccessfulParse = (data, textStatus, jqXHR) => {
@@ -50,4 +81,6 @@ $(document).ready(() => {
       error: (jqXHR, textStatus, errMsg) => showError(`Ett fel inträffade: ${jqXHR.responseText}`)
     });
   };
+  let manualButton = document.getElementById("enterResultManuallyButton");
+  manualButton.onclick = (event) => addResultManually();
 });

@@ -2,15 +2,15 @@
 {% block tab_title %}Nytt resultat{% endblock %}
 {% block content %}
 <link href="/static/newresult.css" rel="stylesheet">
-<form class="row g-3" id="fileUploadForm" method="POST" action="/api/uploadresult">
+<div class="row g-3" id="fileUploadForm">
   <div class="col-auto">
     <input class="btn btn-primary" type="button" id="loadFileXml" value="Ladda upp resultat" onclick="document.getElementById('fileUpload').click();" />
     <input type="file" style="display:none;" id="fileUpload" name="file"/>
   </div>
   <div class="col-auto">
-    <button class="btn btn-secondary">Ange resultat manuellt</button>
+    <button id="enterResultManuallyButton" class="btn btn-secondary">Ange resultat manuellt</button>
   </div>
-</form>
+</div>
 <datalist></datalist>
 <datalist id="drivers">
   {% for number, name in all_drivers %}
