@@ -410,3 +410,27 @@ def parse_result(date):
         return json.dumps(result), 200, {"ContentType": "application/json"}
 
     return flask.Response("Endast html-filer kan laddas upp", 400, {})
+
+
+@main_bp.post("/api/submitresult/<date>")
+def submit_result(date):
+    if not _is_valid_db_date(date):
+        return flask.Response("Invalid date", 400, {})
+
+    raceday = rd.get_raceday_with_date(date)
+    is_admin, _ = check_authentication()
+    if not is_admin:
+        return flask.Response("Du måste vara administratör för utföra denna åtgärd", 401, {})
+
+    if "file" not in request.files:
+        return flask.Response("'file' argument missing", 400, {})
+
+    file = request.files["file"]
+    if file.filename == "":
+        return flask.Response("'file' argument empty", 400, {})
+
+    if file and file.filename.lower().endswith(".html"):
+        result = racedayoperations.parse_html_file(file, raceday)
+        return json.dumps(result), 200, {"ContentType": "application/json"}
+
+    return flask.Response("Endast html-filer kan laddas upp", 400, {})

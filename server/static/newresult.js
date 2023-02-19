@@ -1,8 +1,20 @@
+const RESULT_STARTLIST_ID = "resultStartlistInput";
+const RESULT_TABLE_ID = "resultTable";
+
 let createDriversList = (data, allDriversDictionary) => {
   return data.positions.map(d => ({"name": allDriversDictionary[d], "number": d}));
 };
 
+let revealSubmitButton = () => {
+  let manualButton = document.getElementById("enterResultManuallyButton");
+  let submitButton = document.getElementById("submitButton");
+  manualButton.style.display = "none";
+  submitButton.style.display = "block";
+};
+
 let createStartListInput = (data) => {
+  clearAlerts();
+  revealSubmitButton();
   let resultEditContainer = document.getElementById("resultEditContainer");
   let resultTableContainer = document.getElementById("resultTableContainer");
 
@@ -20,9 +32,11 @@ let createStartListInput = (data) => {
     drivers: createDriversList(data, allDriversDictionary)
   };
   let startListInput = new StartListInput(data.rcclass, data.group, "drivers", configuration);
+  startListInput.id = RESULT_STARTLIST_ID;
   resultEditContainer.appendChild(startListInput);
 
   let resultTable = new ResultTable(data.fullResult, allDriversDictionary);
+  resultTable.id = RESULT_TABLE_ID;
   resultTableContainer.appendChild(resultTable);
 
   // HACK: you need to do this for the edit buttons to be displayed
@@ -30,6 +44,9 @@ let createStartListInput = (data) => {
 };
 
 let addResultManually = () => {
+  clearAlerts();
+  revealSubmitButton();
+
   let resultEditContainer = document.getElementById("resultEditContainer");
   let resultTableContainer = document.getElementById("resultTableContainer");
 
@@ -55,8 +72,19 @@ let addResultManually = () => {
   };
 
   let startListInput = new StartListInput("2WD", "A", "drivers", configuration);
+  startListInput.id = RESULT_STARTLIST_ID;
   resultEditContainer.appendChild(startListInput);
 };
+
+let submitResult = () => {
+  clearAlerts();
+  let startListInput = document.getElementById(RESULT_STARTLIST_ID);
+  let resultTable = document.getElementById(RESULT_TABLE_ID);
+  let drivers = startListInput.drivers;
+  let fullResult = resultTable !== undefined ? resultTable.result : {};
+
+  // TODO du är här, fixa resultatet som du ska skicka.
+}
 
 let onSuccessfulParse = (data, textStatus, jqXHR) => {
   if (data.warningMsg) {
@@ -83,4 +111,6 @@ $(document).ready(() => {
   };
   let manualButton = document.getElementById("enterResultManuallyButton");
   manualButton.onclick = (event) => addResultManually();
+  let submitButton = document.getElementById("submitButton");
+  submitButton.onclick = (event) => submitResult();
 });

@@ -9,8 +9,6 @@ class StartListInput extends Component {
     this.drivers = configuration.drivers || [];
     this.datalistId = datalistId;
 
-    // TODO låt fortfarande drivers-listan bestämma ordningen, men fixa en dictionary där du slår upp antalet varv och tid etc så du slipper hålla koll på den ordningen också
-
     this.onDriverAdded = (driverNumberAndName) => { };
     this.onDriverRemoved = (driverNumberAndName) => { };
     this.onDeleteClicked = (startListInput) => { };
