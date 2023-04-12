@@ -3,7 +3,10 @@ from functools import reduce
 from collections import defaultdict
 from typing import List, Tuple, Dict
 
-from server.racelogic.duration import Duration
+try:
+    from server.racelogic.duration import Duration
+except ImportError:
+    from duration import Duration
 
 
 class HeaderRow:

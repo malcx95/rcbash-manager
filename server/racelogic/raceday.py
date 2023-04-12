@@ -1,8 +1,14 @@
 from typing import List, Dict, Tuple, Iterable, Any, Optional
 
-from server.racelogic.duration import Duration
-from .constants import RESULT_FOLDER_PATH
-from ..models import get_driver_name
+try:
+    from .constants import RESULT_FOLDER_PATH
+    from server.racelogic.duration import Duration
+    from ..models import get_driver_name
+except ImportError:
+    from constants import RESULT_FOLDER_PATH
+    from duration import Duration
+    from names import NAMES
+    def get_driver_name(d): return NAMES[d]
 
 import datetime
 import json

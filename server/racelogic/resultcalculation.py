@@ -1,11 +1,21 @@
 from collections import defaultdict
 from typing import List, Dict, Tuple, Iterable, Callable, Any, Set, Optional
 
-from server.racelogic.names import NAMES
-from server.racelogic.duration import Duration
+try:
+    from server.racelogic.names import NAMES
+    from server.racelogic.duration import Duration
+    from server.racelogic import htmlparsing, textmessages, raceday as rd, filelocation
+    import server.racelogic.util as util
+except ImportError:
+    from names import NAMES
+    from duration import Duration
+    import htmlparsing
+    import textmessages
+    import raceday as rd
+    import filelocation
+    import util
 
-from server.racelogic import htmlparsing, textmessages, raceday as rd, filelocation
-import server.racelogic.util as util
+
 import numpy as np
 
 import math

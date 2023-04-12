@@ -1,6 +1,9 @@
 from typing import Dict, List, Tuple
 
-from server.racelogic.raceday import HeatStartLists
+try:
+    from server.racelogic.raceday import HeatStartLists
+except ImportError:
+    from raceday import HeatStartLists
 
 
 def get_previous_group_wrap_around(
