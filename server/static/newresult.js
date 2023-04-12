@@ -1,6 +1,13 @@
 const RESULT_STARTLIST_ID = "resultStartlistInput";
 const RESULT_TABLE_ID = "resultTable";
 
+// TODO this is probably pretty ugly
+let totalTimes = null;
+let numLapsDriven = null;
+let bestLaptimes = null;
+let averageLaptimes = null;
+
+
 let createDriversList = (data, allDriversDictionary) => {
   return data.positions.map(d => ({"name": allDriversDictionary[d], "number": d}));
 };
@@ -83,13 +90,38 @@ let submitResult = () => {
   let drivers = startListInput.drivers;
   let fullResult = resultTable !== undefined ? resultTable.result : {};
 
-  // TODO du är här, fixa resultatet som du ska skicka.
+  let result = {
+    positions: drivers,
+    totalTimes: totalTimes,
+    numLapsDriven: numLapsDriven,
+    bestLaptimes: bestLaptimes,
+    averageLaptimes: averageLaptimes,
+    fullResult: fullResult,
+    manual: false,
+  };
+  $.ajax({
+    type: "POST",
+    url: `/api/submitResult/${CURRENT_DATE}`,
+    data: result,
+    processData: false,
+    contentType: false,
+    dataType: "json",
+    success: (data, textStatus, jqXHR) => {
+      showSuccess("Resultatet sparades.")
+    },
+    error: (jqXHR, textStatus, errMsg) => showError(`Ett fel inträffade: ${jqXHR.responseText}`)
+  });
 }
 
 let onSuccessfulParse = (data, textStatus, jqXHR) => {
   if (data.warningMsg) {
     showWarning(data.warningMsg);
   }
+  totalTimes = data.totalTimes;
+  numLapsDriven = data.numLapsDriven;
+  bestLaptimes = data.bestLaptimes;
+  averageLaptimes = data.averageLaptimes;
+
   createStartListInput(data);
 };
 

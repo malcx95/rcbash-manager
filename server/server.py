@@ -422,15 +422,5 @@ def submit_result(date):
     if not is_admin:
         return flask.Response("Du måste vara administratör för utföra denna åtgärd", 401, {})
 
-    if "file" not in request.files:
-        return flask.Response("'file' argument missing", 400, {})
-
-    file = request.files["file"]
-    if file.filename == "":
-        return flask.Response("'file' argument empty", 400, {})
-
-    if file and file.filename.lower().endswith(".html"):
-        result = racedayoperations.parse_html_file(file, raceday)
-        return json.dumps(result), 200, {"ContentType": "application/json"}
-
-    return flask.Response("Endast html-filer kan laddas upp", 400, {})
+    data = request.get_json()
+    return flask.Response("", 200, {})

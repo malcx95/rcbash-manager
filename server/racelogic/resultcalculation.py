@@ -518,8 +518,8 @@ def add_new_result(drivers_to_exclude=None):
                 return
 
     raceday.add_result(race, rcclass, group,
-                        positions, num_laps_driven, total_times,
-                        best_laptimes, average_laptimes, False, start_list)
+                       positions, num_laps_driven, total_times,
+                       best_laptimes, average_laptimes, False, start_list)
 
     raceday.save()
 
