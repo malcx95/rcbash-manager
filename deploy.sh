@@ -1,2 +1,2 @@
 #!/bin/bash
-scp -r * malcolm@piserver:/home/malcolm/rcbash-manager
+scp -r [!environment]* malcolm@piserver:/home/malcolm/rcbash-manager

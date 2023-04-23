@@ -6,6 +6,7 @@ try:
     from server.racelogic.duration import Duration
     from server.racelogic import htmlparsing, textmessages, raceday as rd, filelocation
     import server.racelogic.util as util
+    import server.racelogic.constants as constants
 except ImportError:
     from names import NAMES
     from duration import Duration
@@ -13,8 +14,8 @@ except ImportError:
     import textmessages
     import raceday as rd
     import filelocation
+    import constants
     import util
-
 
 import numpy as np
 
@@ -23,11 +24,8 @@ import argparse
 import clipboard
 import copy
 
-
 # TODO make this a parameter
 MAX_NUM_PARTICIPANTS_PER_GROUP = 9
-
-MANUALLY_ENTERED_LAPS_DRIVEN = -1
 
 
 class SeasonPoints:
@@ -45,7 +43,8 @@ class SeasonPoints:
 
     def drivers_ranked_by_points_with_drop_race(self) -> List[rd.Driver]:
         return [driver
-                for driver, _ in sorted(self.total_points_with_drop_race.items(), key=lambda item: item[1], reverse=True)
+                for driver, _ in
+                sorted(self.total_points_with_drop_race.items(), key=lambda item: item[1], reverse=True)
                 if driver in self.total_points]
 
 
@@ -182,16 +181,14 @@ def add_participants() -> Dict[str, Dict[str, List[int]]]:
 
 
 def _should_get_points(group_results: rd.RaceResult, driver: rd.Driver) -> bool:
-    if group_results.has_dns() and not group_results.did_driver_start(driver):
-        return False
-    return group_results.was_manually_entered() or group_results.driver_drove_any_laps(driver)
+    return not (group_results.has_dns() and not group_results.did_driver_start(driver))
 
 
 def _calculate_points_from_non_finals(results: Dict[str, Dict[str, rd.RaceResult]],
                                       points: Dict[str, Dict[rd.Driver, List[int]]]) -> None:
     for rcclass in points:
         # iterate such that we parse A group first
-        current_points = 20
+        current_points = constants.MAX_POINTS_IN_NON_FINALS
         for group in sorted(results[rcclass]):
             positions = results[rcclass][group].positions
             for driver in positions:
@@ -207,7 +204,7 @@ def _calculate_points_from_finals(results: Dict[str, Dict[str, rd.RaceResult]],
     drivers_counted = set()
     for rcclass in points:
         # iterate such that we parse A group first
-        current_points = 40
+        current_points = constants.MAX_POINTS_IN_FINALS
         for group in sorted(results[rcclass]):
             positions = results[rcclass][group].positions
             for driver in positions:
@@ -285,7 +282,7 @@ def _create_almost_equal_partitions(drivers: List[rd.Driver], num_partitions: in
     else:
         first_partition_size = math.ceil(len(drivers) / num_partitions)
         return [drivers[:first_partition_size]] + \
-            _create_almost_equal_partitions(drivers[first_partition_size:], num_partitions - 1)
+               _create_almost_equal_partitions(drivers[first_partition_size:], num_partitions - 1)
 
 
 def _create_start_list_from_qualifiers(groups: Dict[str, List[str]], raceday: rd.Raceday) \
@@ -308,7 +305,7 @@ def _create_start_list_from_qualifiers(groups: Dict[str, List[str]], raceday: rd
     added_drivers: Set[rd.Driver] = set()
     duplicate_drivers: Set[rd.Driver] = set()
     for rcclass in start_lists:
-        # Don't know why the type checker disagree here, but this is the correct type.
+        # Don't know why the type checker disagrees here, but this is the correct type.
         # noinspection PyTypeChecker
         class_results: List[Tuple[str, rd.RaceResult]] = sorted(
             raceday.get_class_results(rd.QUALIFIERS_NAME, rcclass).items(),
@@ -396,7 +393,7 @@ def _remove_and_return_duplicate_drivers(start_lists):
 def _sort_by_points_and_best_heats(points):
     def key_fn(item):
         number, p = item
-        point_histogram = [0] * 20
+        point_histogram = [0] * constants.MAX_POINTS_IN_NON_FINALS
         for point in p:
             point_histogram[point - 1] += 1
         return tuple([sum(p)] + list(reversed(point_histogram)))
@@ -533,8 +530,8 @@ def add_new_result(drivers_to_exclude=None):
                 return
 
     raceday.add_result(race, rcclass, group,
-                        positions, num_laps_driven, total_times,
-                        best_laptimes, average_laptimes, False, start_list)
+                       positions, num_laps_driven, total_times,
+                       best_laptimes, average_laptimes, False, start_list)
 
     raceday.save()
 
@@ -602,8 +599,8 @@ def add_new_result_manually():
         positions.remove(driver.number)
 
     raceday.add_result(race, rcclass, group,
-                        positions, num_laps_driven, total_times,
-                        [], [], True, start_list)
+                       positions, num_laps_driven, total_times,
+                       [], [], True, start_list)
 
     raceday.save()
 
@@ -747,7 +744,6 @@ def calculate_season_points(racedays: List[rd.Raceday], race_locations: List[str
     points_for_all_races = [_calculate_cup_points(raceday) for raceday in racedays]
     for driver in all_drivers:
         for race_points, points_per_heat in points_for_all_races:
-
             rcclass = "2WD" if driver in points_per_heat["2WD"] else "4WD"
             driver_points = race_points.get(driver, None)
             drove_in_neither_class = driver_points is None
