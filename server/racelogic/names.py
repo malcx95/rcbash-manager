@@ -27,7 +27,7 @@ NAMES = {
     33: "Rickard/H",
     34: "antonsony",
     35: "TheNewGuy",
-    36: "Lali",
+    36: "Nyqvist",
     37: "Fredrikf",
     38: "Huseby",
     39: "Janimakaj",

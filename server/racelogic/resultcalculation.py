@@ -23,9 +23,19 @@ import math
 import argparse
 import clipboard
 import copy
+import os
+import json
 
-# TODO make this a parameter
-MAX_NUM_PARTICIPANTS_PER_GROUP = 9
+SETTINGS = {
+    "max_participants": 9
+}
+
+if os.path.isfile("settings.json"):
+    with open("settings.json") as f:
+        SETTINGS = json.load(f)
+
+
+MAX_NUM_PARTICIPANTS_PER_GROUP = SETTINGS["max_participants"]
 
 
 class SeasonPoints:
@@ -56,11 +66,11 @@ def start_new_race_day():
     db_exists_already = rd.init_raceday_path()
 
     if db_exists_already:
-        print("There is already an ongoing race day for today!")
+        print("Det finns redan en pågående deltävling för idag!")
         answered = False
         while not answered:
-            ans = _input("Do you really want to overwrite it? (yes/n): ")
-            if ans == "yes":
+            ans = _input("Vill du verkligen skriva över den? (ja/n): ")
+            if ans == "ja":
                 answered = True
             elif ans == "n":
                 return False
@@ -68,7 +78,7 @@ def start_new_race_day():
     raceday = rd.create_empty_raceday()
     raceday.save()
 
-    print("New race day created for today!")
+    print("Ny deltävling skapad!")
 
     return True
 
@@ -85,51 +95,51 @@ def _number_already_entered(num, participants):
         return False
 
 
-def _enter_participant(participants, msg="Enter a participant (blank to end group): "):
+def _enter_participant(participants, msg="Skriv in en deltagare (lämna blankt för att avsluta grupp): "):
     while True:
         number = _input(msg)
         if number == "":
             return None
         elif not number.isnumeric():
-            print(f"{number} isn't a number.")
+            print(f"{number} är inte ett nummer.")
         elif _number_already_entered(int(number), participants):
-            print(f"Number {number} has already been entered")
+            print(f"Nummer {number} har redan matats in")
         elif int(number) in NAMES:
             return int(number)
         else:
-            print(f"Number {number} doesn't match any driver.")
+            print(f"Nummer {number} matchar ingen förare.")
 
 
 def _enter_num_laps(number):
     while True:
-        num_laps = _input(f"Enter number of laps driven by {number}: ")
+        num_laps = _input(f"Skriv in antalet varv körda av {number}: ")
         if not num_laps.isnumeric():
-            print(f"{num_laps} isn't a number.")
+            print(f"{num_laps} är inte ett nummer.")
         else:
             return int(num_laps)
 
 
 def _enter_total_time(number):
     while True:
-        entered = _input(f"Enter total time driven by {number} (minutes:seconds:milliseconds): ")
+        entered = _input(f"Skriv in den totala tiden för {number} (minuter:sekunder:millisekunder): ")
         try:
             minutes_str, seconds_str, milliseconds_str = entered.split(":")
             return Duration(minutes=int(minutes_str),
                             seconds=int(seconds_str),
                             milliseconds=int(milliseconds_str))
         except ValueError:
-            print(f"{entered} isn't a valid time format (minutes:seconds:milliseconds)")
+            print(f"{entered} är inte ett giltigt tidsformat (minuter:sekunder:millisekunder)")
 
 
-def _confirm_yes_no(msg="Confirm?"):
+def _confirm_yes_no(msg="Bekräfta?"):
     while True:
-        ans = _input(f"{msg} (y/n): ")
-        if ans in ("y", "n"):
-            return ans == "y"
+        ans = _input(f"{msg} (j/n): ")
+        if ans in ("j", "n"):
+            return ans == "j"
 
 
 def _confirm_group_done(start_list, rcclass, group):
-    print(f"This is the start list for {rcclass} {group}:")
+    print(f"Detta är startlistan för {rcclass} {group}:")
     print("\n".join(f"{i + 1}. {num} - {NAMES[num]}" for i, num in enumerate(start_list)))
 
     return _confirm_yes_no()
@@ -160,9 +170,9 @@ def add_participants() -> Dict[str, Dict[str, List[int]]]:
     groups = ["A", "B", "C"]
     for rcclass in classes:
         for group in groups:
-            print(f"Now entering participants for {rcclass}, group {group}")
-            print("Enter the participants in the order they will start in the qualifiers.")
-            print("Empty groups will not be used.")
+            print(f"Nu matar du in deltagare för {rcclass}, grupp {group}")
+            print("Skriv deltagarna in ordningen de ska starta i sitt kvalheat.")
+            print("Tomma grupper kommer inte att användas.")
 
             group_done = False
 
@@ -256,7 +266,7 @@ def _enter_new_groups() -> Dict[str, List[str]]:
     for rcclass in groups:
         entered = ""
         while entered not in ("A", "B", "C"):
-            entered = _input(f"Enter the lowest group for {rcclass}: ")
+            entered = _input(f"Skriv in den lägsta gruppen för {rcclass}: ")
         groups[rcclass] = groups_to_add[entered]
     return groups
 
@@ -267,7 +277,7 @@ def _select_from_list(options: List[Any], message: str, element_format_fn: Calla
         print(f"{i + 1}. {element_format_fn(option)}")
     ans = ""
     while not (ans.isdigit() and 1 <= int(ans) <= len(options)):
-        ans = _input(f"Select option 1-{len(options)}: ")
+        ans = _input(f"Välj alternativ 1-{len(options)}: ")
 
     return options[int(ans) - 1]
 
@@ -435,16 +445,16 @@ def start_new_race_round():
     raceday = rd.get_raceday()
     current_heat = raceday.get_current_heat()
     if not raceday.are_all_races_in_round_completed(current_heat):
-        print("Can't start new round yet! Not all races are completed!")
+        print("Kan inte starta en ny omgång än, alla heat är inte avklarade i denna omgång!")
         return
 
     groups = raceday.get_current_groups()
 
     if raceday.get_current_heat() == rd.QUALIFIERS_NAME:
-        print(f"Current groups are 2WD {', '.join(groups['2WD'])} and 4WD {', '.join(groups['4WD'])}")
-        while not _confirm_yes_no("Do you want to use these groups?"):
+        print(f"Nuvarande grupper är 2WD {', '.join(groups['2WD'])} och 4WD {', '.join(groups['4WD'])}")
+        while not _confirm_yes_no("Vill du fortfarande använda dessa grupper?"):
             groups = _enter_new_groups()
-            print(f"New groups are 2WD {', '.join(groups['2WD'])} and 4WD {', '.join(groups['4WD'])}")
+            print(f"Nya grupper är 2WD {', '.join(groups['2WD'])} och 4WD {', '.join(groups['4WD'])}")
 
     new_start_lists, duplicate_drivers = _create_new_start_lists(groups, raceday)
 
@@ -454,8 +464,8 @@ def start_new_race_round():
     show_current_heat_start_list(raceday)
 
     if duplicate_drivers:
-        print(f"Warning: Driver(s) {', '.join(str(n) for n in duplicate_drivers)} may have been in the wrong heat.")
-        if not _confirm_yes_no("Do you want to use these start lists anyway?"):
+        print(f"Varning: Förare {', '.join(str(n) for n in duplicate_drivers)} kanske körde i fel heat.")
+        if not _confirm_yes_no("Vill du använda dessa startlistor ändå?"):
             return
     raceday.save()
 
@@ -494,8 +504,8 @@ def add_new_result(drivers_to_exclude=None):
 
     extra_participants = set(race_participants) - set(start_list)
     if extra_participants:
-        if _confirm_yes_no(f"Driver(s) {extra_participants} weren't "
-                           f"supposed to be in this race. Do you want to exclude them?"):
+        if _confirm_yes_no(f"Förarna {extra_participants} skulle inte "
+                           f"ha kört i det här racet. Vill du ta bort dem?"):
             for driver in extra_participants:
                 if drivers_to_exclude is None:
                     drivers_to_exclude = []
@@ -511,22 +521,22 @@ def add_new_result(drivers_to_exclude=None):
             average_laptimes = [(n, time) for n, time in average_laptimes if n != driver.number]
 
     if race is None:
-        print("Couldn't match the latest result with any race!")
-        print(f"Latest race had participants {race_participants}")
+        print("Kunde inte matcha det senaste resultatet med något race!")
+        print(f"Senaste racet hade deltagarna {race_participants}")
         return
 
-    print(f"The latest result matches {rcclass} {group} {race}.")
+    print(f"Det senaste resultatet matchar {rcclass} {group} {race}.")
     if not _confirm_yes_no():
-        print("Please manually enter the result using the --manual flag")
+        print("Mata in resultatet manuellt istället.")
         return
 
     if raceday.result_exists(race, rcclass, group):
-        print("This race already has a previous result, which will be overwritten.")
+        print("Det här racet har redan ett resultat, som kommer att skrivas över.")
         if not _confirm_yes_no():
             return
         elif race == rd.FINALS_NAME:
-            print("Please manually remove the old winner from the next start list before doing so!")
-            if not _confirm_yes_no("Have you done that?"):
+            print("Ta bort vinnaren från förra heatet manuellt innan du fortsätter!")
+            if not _confirm_yes_no("Har du gjort det?"):
                 return
 
     raceday.add_result(race, rcclass, group,
@@ -541,7 +551,7 @@ def add_new_result(drivers_to_exclude=None):
     clipboard.copy(results_text)
     print(results_text)
 
-    print("^^ Copied to clipboard")
+    print("^^ Kopierat till urklipp")
 
 
 def add_new_result_manually():
@@ -552,21 +562,21 @@ def add_new_result_manually():
     race_options = [(rcclass, group)
                     for rcclass in ("2WD", "4WD") for group in raceday.get_groups_in_race(race, rcclass)]
     rcclass, group = _select_from_list(
-        race_options, "Select which race to enter manually.", lambda e: " ".join(e))
+        race_options, "Välj vilket race att mata in manuellt.", lambda e: " ".join(e))
 
     if raceday.result_exists(race, rcclass, group):
-        print("This race already has a previous result, which will be overwritten.")
+        print("Det här racet har redan ett resultat, som kommer att skrivas över.")
         if not _confirm_yes_no():
             return
         elif race == rd.FINALS_NAME:
-            print("Please manually remove the old winner from the next start list before doing so!")
-            if not _confirm_yes_no("Have you done that?"):
+            print("Ta bort vinnaren från förra heatet manuellt innan du fortsätter!")
+            if not _confirm_yes_no("Har du gjort det?"):
                 return
 
-    print("Enter the drivers in the order they finished.")
+    print("Mata in förarna i ordningen de slutade.")
     positions = []
     while True:
-        number = _enter_participant(positions, msg="Enter driver number (blank to end): ")
+        number = _enter_participant(positions, msg="Mata in förarnummer (lämna blankt för att avsluta): ")
         if number is None:
             break
         positions.append(number)
@@ -587,8 +597,8 @@ def add_new_result_manually():
     drivers_to_exclude = []
     extra_participants = set(race_participants) - set(start_list)
     if extra_participants:
-        if _confirm_yes_no(f"Driver(s) {extra_participants} weren't "
-                           f"supposed to be in this race. Do you want to exclude them?"):
+        if _confirm_yes_no(f"Förare {extra_participants} skulle inte ha "
+                           f"deltagit i detta race. Vill du ta bort dem?"):
             for driver in extra_participants:
                 drivers_to_exclude.append(driver)
 
@@ -610,7 +620,7 @@ def add_new_result_manually():
     clipboard.copy(results_text)
     print(results_text)
 
-    print("^^ Copied to clipboard")
+    print("^^ Kopierat till urklipp")
 
 
 def show_latest_result(select=False):
@@ -623,10 +633,10 @@ def show_latest_result(select=False):
                         for rcclass in ("2WD", "4WD")
                         for group in raceday.get_class_results(race, rcclass)]
         race, rcclass, group = _select_from_list(
-            race_options, "Select which race to display results for.", lambda e: " ".join(e))
+            race_options, "Välj vilket race att visa resultat för.", lambda e: " ".join(e))
 
     if race is None:
-        print("There are no results yet!")
+        print("Det finns inga resultat än!")
         return
 
     results_text = textmessages.get_result_text_message(
@@ -635,7 +645,7 @@ def show_latest_result(select=False):
     clipboard.copy(results_text)
     print(results_text)
 
-    print("^^ Copied to clipboard")
+    print("^^ Kopierat till urklipp")
 
 
 def show_current_heat_start_list(raceday: rd.Raceday = None) -> None:
@@ -653,7 +663,7 @@ def show_current_heat_start_list(raceday: rd.Raceday = None) -> None:
     clipboard.copy(text_message)
     print(text_message)
 
-    print("^^ Copied to clipboard")
+    print("^^ Kopierat till urklipp")
 
 
 def get_all_start_lists(raceday) -> Tuple[Iterable[Tuple[str, List]], Dict[str, Dict]]:
@@ -777,7 +787,7 @@ def show_current_points(verbose):
     clipboard.copy(text_message)
     print(text_message)
 
-    print("^^ Copied to clipboard")
+    print("^^ Kopierat till urklipp")
 
 
 def get_current_cup_points(date) -> Tuple[Dict[rd.Driver, int], Dict[str, Dict[rd.Driver, List[int]]]]:
@@ -791,7 +801,7 @@ def show_start_message():
     heat_name, rcclass, group, class_order_index = _get_next_race(raceday)
 
     if heat_name is None:
-        print("There are no more races in this heat!")
+        print("Det finns inga fler race i detta heat!")
         return
 
     heat_start_lists = raceday.get_start_lists_for_heat(heat_name)
@@ -802,7 +812,7 @@ def show_start_message():
     clipboard.copy(text_message)
     print(text_message)
 
-    print("^^ Copied to clipboard")
+    print("^^ Kopierat till urklipp")
 
 
 def main():

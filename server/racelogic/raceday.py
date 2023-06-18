@@ -78,7 +78,7 @@ class Driver:
         return self.number == other.number
 
     def __repr__(self):
-        return f"Driver({self.number})"
+        return str(self)
 
     def __str__(self):
         return f"{self.number} {self.name}"
