@@ -1,89 +1,49 @@
 #!/usr/bin/env python3
 
 NAMES = {
-    10: "S500R",
-    11: "connysvensson",
-    12: "Mikael",
-    13: "RagnarVR6",
-    14: "adamalge",
-    15: "Marcus76",
-    16: "Marauder",
-    17: "Wipe",
-    18: "ers",
-    19: "Bosse",
-    20: "Lusse",
-    21: "Emanuel21",
-    22: "Smurfen",
-    23: "Svinto79",
-    24: "fridde81",
-    25: "Freko",
-    26: "cuun123",
-    27: "Streith",
-    28: "Crosshot",
-    29: "Codfish",
-    30: "Sniclas",
-    31: "Milan",
-    32: "Emil Ekholm",
-    33: "Rickard/H",
-    34: "antonsony",
-    35: "TheNewGuy",
-    36: "Nyqvist",
-    37: "Fredrikf",
-    38: "Huseby",
-    39: "Janimakaj",
-    40: "Gliderking",
-    41: "Gammelgäddan",
-    42: "7jnoprob",
-    44: "maddan",
-    45: "perka",
-    46: "Brypa",
-    47: "Dave",
-    48: "Nilssen",
-    49: "chili_asconaA",
-    50: "Zakarezze",
-    51: "truckpeter",
-    52: "lobolars",
-    53: "Mr_Rustler",
-    54: "Hakan_Ehn",
-    55: "GcBossen",
-    56: "Arne S",
-    58: "Stargatefour",
-    60: "T-Eddie",
-    62: "Blomberg",
-    63: "DanielV",
-    64: "J_wohlfart",
-    65: "Wohlfie",
-    66: "RCR Norway",
-    67: "Calle",
-    68: "sungamnaru",
-    69: "Malte",
-    70: "stefan_valen",
-    71: "Hawk71",
-    72: "Fissure",
-    73: "Baja Beast",
-    74: "Tophat",
-    75: "Kingstreet Rc",
-    76: "Wahla",
-    77: "Morgan77",
-    78: "lars10",
-    79: "Sundell79",
-    80: "Mats",
-    81: "håkan",
-    82: "Micke8233",
-    83: "Mastiff83",
-    84: "Andren",
-    85: "Rb40",
-    86: "pbengt",
-    87: "Tesla",
-    88: "Fredricsson",
-    89: "Big D",
-    90: "malcx95",
-    91: "Afram",
-    92: "perra5ive",
-    93: "Ubangusam",
-    94: "Rex",
-    95: "LukasEk",
-    96: "pmalmstrom",
-    98: "AndersF",
-    99: "Perra5ive",
+    10: "Lars",
+    11: "connysvensson",  # Conny Svensson
+    14: "sundevall",  # Johan Sundevall
+    19: "Bosse",  # Bo Wigren
+    21: "Emanuel21",  # Emanuel Ergul
+    22: "Smurfen",  # Pjerre Gustavsson
+    23: "Svinto79",  # Dennis Fridlund
+    24: "fridde81",  # Andreas Fridlund
+    26: "cuun123",  # Tommy Öhngren
+    27: "Streith",  # Mattias Streith
+    29: "Codfish",  # Elliot Runsteen
+    31: "Milan",  # Milan Lazovic
+    35: "TheNewGuy",  # Patrik Runsteen
+    36: "Nyqvist",  # Jarek Wroblewski
+    37: "Fredrikf",  # Fredrik Flodkvist
+    38: "Huseby",  # Geir Huseby
+    39: "Janimakaj",  # Olle Olsson
+    41: "Gammelgäddan",  # Peter Wigren
+    42: "7jnoprob",  # Rikard Nilsson
+    45: "perka",  # Per Karlsson
+    46: "Brypa",  # Patrik Bryske
+    48: "Nilssen",  # Bjørn Erik Nilssen
+    51: "truckpeter",  # Peter Andersson
+    53: "Mr_Rustler",  # Mattias Andersson
+    54: "Hakan_Ehn",  # Håkan Ehn
+    56: "Arne S",  # Arne Skaug
+    58: "Stargatefour",  # Nicklas Andersson
+    60: "T-Eddie",  # Eddie leksell
+    62: "Blomberg",  # Alexander Blomberg
+    63: "DanielV",  # Daniel Vuorenmaa
+    64: "J_wohlfart",  # Jimmy Wohlfart
+    65: "Wohlfie",  # Anders Wohlfart
+    67: "Calle",  # Carl Johan Sandström
+    71: "Hawk71",  # Håkan Kågström
+    75: "Kingstreet Rc",  # Robin Wennermark
+    76: "Wahla",  # Niklas Wahlström
+    77: "Morgan77",  # Morgan Esping Gustavsson
+    78: "lars10",  # Lars owinski
+    82: "Micke8233",  # Mikael Eriksson
+    83: "Mastiff83",  # Joel Eriksson
+    85: "Rb40",  # Robert Brodén
+    88: "Fredricsson",  # Robin Fredriksson
+    89: "Big D",  # David Lindquist
+    90: "malcx95",  # malcolm Wigren
+    94: "Rex",  # Anders Andersson
 }
